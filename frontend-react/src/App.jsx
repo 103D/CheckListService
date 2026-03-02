@@ -13,7 +13,6 @@ import BranchesPage from "./pages/BranchesPage";
 import EmployeesPage from "./pages/EmployeesPage";
 import GradesPage from "./pages/GradesPage";
 import RatingsPage from "./pages/RatingsPage";
-import UsersPage from "./pages/UsersPage";
 
 function App() {
   const [apiBaseUrl, setApiBaseUrl] = useState(
@@ -55,7 +54,6 @@ function App() {
           <ProtectedRoute token={token}>
             <AppLayout
               apiBaseUrl={apiBaseUrl}
-              setApiBaseUrl={setApiBaseUrl}
               token={token}
               setToken={setToken}
               toast={toast}
@@ -81,16 +79,6 @@ function App() {
           path="/ratings"
           element={<RatingsPage apiBaseUrl={apiBaseUrl} token={token} notify={notify} />}
         />
-        <Route
-          path="/users"
-          element={
-            userRole === "ADMIN" ? (
-              <UsersPage apiBaseUrl={apiBaseUrl} token={token} notify={notify} />
-            ) : (
-              <Navigate to="/branches" replace />
-            )
-          }
-        />
       </Route>
 
       <Route path="*" element={<Navigate to={token ? "/branches" : "/auth"} replace />} />
@@ -98,15 +86,8 @@ function App() {
   );
 }
 
-function AppLayout({ apiBaseUrl, setApiBaseUrl, token, setToken, toast, notify }) {
+function AppLayout({ token, setToken, toast, notify }) {
   const navigate = useNavigate();
-  const [apiInput, setApiInput] = useState(apiBaseUrl);
-  const role = getRoleFromToken(token);
-
-  const saveApiUrl = () => {
-    setApiBaseUrl(apiInput.trim().replace(/\/$/, ""));
-    notify("success", "API URL сохранен");
-  };
 
   const logout = () => {
     setToken("");
@@ -120,21 +101,9 @@ function AppLayout({ apiBaseUrl, setApiBaseUrl, token, setToken, toast, notify }
         <h1>Employee Rating Dashboard</h1>
 
         <div className="topbar-row">
-          <input
-            value={apiInput}
-            onChange={(e) => setApiInput(e.target.value)}
-            placeholder="API URL"
-          />
-          <button type="button" onClick={saveApiUrl}>
-            Сохранить API URL
-          </button>
           <button type="button" onClick={logout}>
             Выход
           </button>
-        </div>
-
-        <div className="topbar-row">
-          <span>Токен: {token ? `${token.slice(0, 22)}...` : "не задан"}</span>
         </div>
 
         {toast ? <div className={`notice ${toast.type}`}>{toast.text}</div> : null}
@@ -144,7 +113,6 @@ function AppLayout({ apiBaseUrl, setApiBaseUrl, token, setToken, toast, notify }
           <NavLink to="/employees">Сотрудники</NavLink>
           <NavLink to="/grades">Оценки</NavLink>
           <NavLink to="/ratings">Рейтинги</NavLink>
-          {role === "ADMIN" ? <NavLink to="/users">Пользователи</NavLink> : null}
         </nav>
       </header>
 

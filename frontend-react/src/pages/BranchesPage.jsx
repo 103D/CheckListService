@@ -3,7 +3,8 @@ import { apiRequest } from "../api/client";
 import DataTable from "../components/DataTable";
 
 export default function BranchesPage({ apiBaseUrl, token, notify }) {
-  const [name, setName] = useState("");
+  const branchOptions = ["Амир", "Достык", "Сейфуллина", "Лассио", "Рахат"];
+  const [name, setName] = useState("Амир");
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
 
@@ -62,13 +63,17 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
       </div>
 
       <form onSubmit={handleCreate} className="inline-form">
-        <input
-          type="text"
-          placeholder="Название филиала"
+        <select
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-        />
+        >
+          {branchOptions.map((branchName) => (
+            <option key={branchName} value={branchName}>
+              {branchName}
+            </option>
+          ))}
+        </select>
         <button type="submit">Создать</button>
       </form>
 

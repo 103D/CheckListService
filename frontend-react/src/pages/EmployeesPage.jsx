@@ -3,7 +3,8 @@ import { apiRequest } from "../api/client";
 import DataTable from "../components/DataTable";
 
 export default function EmployeesPage({ apiBaseUrl, token, notify }) {
-  const [form, setForm] = useState({ name: "", branch_id: 1 });
+  const [form, setForm] = useState({ name: "", branch_id: "" });
+  const [branches, setBranches] = useState([]);
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
 
@@ -28,7 +29,30 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
     }
   };
 
+  const loadBranches = async () => {
+    setError("");
+    try {
+      const data = await apiRequest({
+        apiBaseUrl,
+        path: "/branches/",
+        token,
+      });
+      setBranches(data);
+      if (data.length > 0) {
+        const firstId = Number(data[0].id);
+        setForm((prev) => ({
+          ...prev,
+          branch_id: prev.branch_id || firstId,
+        }));
+      }
+    } catch (err) {
+      setError(err.message);
+      notify("error", err.message);
+    }
+  };
+
   useEffect(() => {
+    loadBranches();
     loadEmployees();
   }, []);
 
@@ -47,7 +71,7 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
           branch_id: Number(form.branch_id),
         },
       });
-      setForm({ name: "", branch_id: 1 });
+      setForm((prev) => ({ ...prev, name: "" }));
       await loadEmployees();
       notify("success", "Сотрудник создан");
     } catch (err) {
@@ -73,16 +97,20 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
           onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
           required
         />
-        <input
-          type="number"
-          min="1"
-          placeholder="ID филиала"
+        <select
           value={form.branch_id}
           onChange={(e) =>
-            setForm((prev) => ({ ...prev, branch_id: e.target.value }))
+            setForm((prev) => ({ ...prev, branch_id: Number(e.target.value) }))
           }
           required
-        />
+        >
+          {branches.length === 0 ? <option value="">Нет филиалов</option> : null}
+          {branches.map((branch) => (
+            <option key={branch.id} value={branch.id}>
+              {branch.name}
+            </option>
+          ))}
+        </select>
         <button type="submit">Создать</button>
       </form>
 

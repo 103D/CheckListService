@@ -38,7 +38,7 @@ export default function AuthPage({ apiBaseUrl, onLogin, notify }) {
     <div className="auth-page">
       <div className="auth-card">
         <h1>Employee Rating</h1>
-        <p className="muted">Вход по никнейму. Регистрация доступна только через API.</p>
+        <p className="muted">Только вход по логину и паролю.</p>
 
         {error ? <div className="notice error">{error}</div> : null}
 

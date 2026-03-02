@@ -1,34 +1,63 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiRequest } from "../api/client";
 import DataTable from "../components/DataTable";
 
 export default function GradesPage({ apiBaseUrl, token, notify }) {
+  const shiftRoles = ["Кассир", "Продавец", "Официант", "Бариста"];
+
   const [createForm, setCreateForm] = useState({
-    employee_id: 1,
+    employee_id: "",
     value: 100,
-    role_in_shift: "",
+    role_in_shift: "Кассир",
     comment: "",
   });
-  const [employeeId, setEmployeeId] = useState(1);
+  const [employees, setEmployees] = useState([]);
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
 
   const columns = [
-    { key: "id", label: "ID" },
     { key: "employee_id", label: "Сотрудник" },
-    { key: "manager_id", label: "Менеджер" },
     { key: "value", label: "Оценка" },
     { key: "role_in_shift", label: "Роль" },
     { key: "comment", label: "Комментарий" },
     { key: "created_at", label: "Дата" },
   ];
 
-  const loadByEmployee = async () => {
+  const loadEmployees = async () => {
     setError("");
     try {
       const data = await apiRequest({
         apiBaseUrl,
-        path: `/grades/employee/${Number(employeeId)}`,
+        path: "/employees/",
+        token,
+      });
+      setEmployees(data);
+      if (data.length > 0) {
+        const firstId = Number(data[0].id);
+        setCreateForm((prev) => ({
+          ...prev,
+          employee_id: prev.employee_id || firstId,
+        }));
+        if (!createForm.employee_id) {
+          await loadByEmployee(firstId);
+        }
+      }
+    } catch (err) {
+      setError(err.message);
+      notify("error", err.message);
+    }
+  };
+
+  const loadByEmployee = async (id) => {
+    if (!id) {
+      setRows([]);
+      return;
+    }
+    setError("");
+    try {
+      const data = await apiRequest({
+        apiBaseUrl,
+        path: `/grades/employee/${Number(id)}`,
         token,
       });
       setRows(data);
@@ -56,7 +85,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
         },
       });
       setCreateForm((prev) => ({ ...prev, value: 100, comment: "" }));
-      await loadByEmployee();
+      await loadByEmployee(createForm.employee_id);
       notify("success", "Оценка добавлена");
     } catch (err) {
       setError(err.message);
@@ -64,10 +93,9 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     }
   };
 
-  const handleLoad = async (event) => {
-    event.preventDefault();
-    await loadByEmployee();
-  };
+  useEffect(() => {
+    loadEmployees();
+  }, []);
 
   return (
     <section className="panel">
@@ -76,16 +104,20 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
       </div>
 
       <form onSubmit={handleCreate} className="inline-form wrap">
-        <input
-          type="number"
-          min="1"
-          placeholder="ID сотрудника"
+        <select
           value={createForm.employee_id}
           onChange={(e) =>
-            setCreateForm((prev) => ({ ...prev, employee_id: e.target.value }))
+            setCreateForm((prev) => ({ ...prev, employee_id: Number(e.target.value) }))
           }
           required
-        />
+        >
+          {employees.length === 0 ? <option value="">Нет сотрудников</option> : null}
+          {employees.map((employee) => (
+            <option key={employee.id} value={employee.id}>
+              {employee.name}
+            </option>
+          ))}
+        </select>
         <input
           type="number"
           min="1"
@@ -97,15 +129,19 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
           }
           required
         />
-        <input
-          type="text"
-          placeholder="Роль в смене"
+        <select
           value={createForm.role_in_shift}
           onChange={(e) =>
             setCreateForm((prev) => ({ ...prev, role_in_shift: e.target.value }))
           }
           required
-        />
+        >
+          {shiftRoles.map((role) => (
+            <option key={role} value={role}>
+              {role}
+            </option>
+          ))}
+        </select>
         <input
           type="text"
           placeholder="Комментарий"
@@ -115,18 +151,6 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
           }
         />
         <button type="submit">Добавить оценку</button>
-      </form>
-
-      <form onSubmit={handleLoad} className="inline-form">
-        <input
-          type="number"
-          min="1"
-          placeholder="ID сотрудника"
-          value={employeeId}
-          onChange={(e) => setEmployeeId(e.target.value)}
-          required
-        />
-        <button type="submit">Показать оценки сотрудника</button>
       </form>
 
       {error ? <div className="notice error">{error}</div> : null}
