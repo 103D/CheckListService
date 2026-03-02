@@ -5,14 +5,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.security import (
-    ALGORITHM, 
+    ALGORITHM,
     SECRET_KEY,
     create_access_token,
     get_password_hash,
     verify_password,
 )
 from app.database import get_db
-from app.models import User
+from app.models import Branch, User
 from app.schemas import Token, UserCreate, UserResponse
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -41,6 +41,10 @@ def create_user_or_raise(user_data: UserCreate, db: Session) -> User:
         raise HTTPException(
             status_code=409, detail="User with this username already exists"
         )
+
+    branch = db.query(Branch).filter(Branch.id == user_data.branch_id).first()
+    if not branch:
+        raise HTTPException(status_code=400, detail="Branch not found")
 
     user = User(
         username=user_data.username,

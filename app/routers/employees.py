@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import ALGORITHM, SECRET_KEY
 from app.database import get_db
-from app.models import Employee, User
+from app.models import Branch, Employee, User
 from app.schemas import EmployeeCreate, EmployeeResponse
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
@@ -44,6 +44,10 @@ def create_employee(
         raise HTTPException(
             status_code=403, detail="Cannot create employee in other branch"
         )
+
+    branch = db.query(Branch).filter(Branch.id == employee_data.branch_id).first()
+    if not branch:
+        raise HTTPException(status_code=400, detail="Branch not found")
 
     employee = Employee(name=employee_data.name, branch_id=employee_data.branch_id)
     db.add(employee)

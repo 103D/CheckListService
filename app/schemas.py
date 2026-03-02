@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -19,6 +20,22 @@ class GradeCreate(BaseModel):
     comment: Optional[str] = None
     employee_id: int
 
+    @field_validator("role_in_shift")
+    @classmethod
+    def validate_role_in_shift(cls, value: str) -> str:
+        role_map = {
+            "кассир": "Кассир",
+            "продавец": "Продавец",
+            "официант": "Официант",
+            "бариста": "Бариста",
+        }
+        normalized = value.strip().lower()
+        if normalized not in role_map:
+            raise ValueError(
+                "Role in shift must be one of: Кассир, Продавец, Официант, Бариста"
+            )
+        return role_map[normalized]
+
 
 class GradeResponse(BaseModel):
     id: int
@@ -27,7 +44,7 @@ class GradeResponse(BaseModel):
     comment: Optional[str]
     employee_id: int
     manager_id: int
-    created_at: str
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -50,6 +67,23 @@ class EmployeeResponse(BaseModel):
 class BranchCreate(BaseModel):
     name: str
 
+    @field_validator("name")
+    @classmethod
+    def validate_branch_name(cls, value: str) -> str:
+        branch_map = {
+            "амир": "Амир",
+            "достык": "Достык",
+            "сейфуллина": "Сейфуллина",
+            "лассио": "Лассио",
+            "рахат": "Рахат",
+        }
+        normalized = value.strip().lower()
+        if normalized not in branch_map:
+            raise ValueError(
+                "Branch name must be one of: Амир, Достык, Сейфуллина, Лассио, Рахат"
+            )
+        return branch_map[normalized]
+
 
 class BranchResponse(BaseModel):
     id: int
@@ -64,6 +98,15 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=6, max_length=128)
     role: str  # ADMIN или MANAGER
     branch_id: int
+
+    @field_validator("role")
+    @classmethod
+    def validate_and_normalize_role(cls, value: str) -> str:
+        normalized = value.strip().upper()
+        allowed_roles = {"ADMIN", "MANAGER"}
+        if normalized not in allowed_roles:
+            raise ValueError("Role must be ADMIN or MANAGER")
+        return normalized
 
     @field_validator("password")
     @classmethod

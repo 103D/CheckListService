@@ -1,9 +1,10 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
 
 from app import models
 from app.database import engine
 from app.routers import auth, branches, employees, grades, ratings
-from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 # Разрешаем все домены (для разработки)
@@ -22,7 +23,26 @@ app.add_middleware(
 def on_startup():
     print("CREATING TABLES...")
     models.Base.metadata.create_all(bind=engine)
+    ensure_grade_created_at_column()
     print("DONE")
+
+
+def ensure_grade_created_at_column() -> None:
+    inspector = inspect(engine)
+    if "grades" not in inspector.get_table_names():
+        return
+
+    grade_columns = {column["name"] for column in inspector.get_columns("grades")}
+    if "created_at" in grade_columns:
+        return
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE grades "
+                "ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP"
+            )
+        )
 
 
 @app.get("/")
