@@ -5,6 +5,7 @@ import {
     Outlet,
     Route,
     Routes,
+    useLocation,
     useNavigate,
 } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -88,6 +89,8 @@ function App() {
 
 function AppLayout({ token, setToken, toast, notify }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isRatingsPage = location.pathname === "/ratings";
 
   const logout = () => {
     setToken("");
@@ -97,26 +100,76 @@ function AppLayout({ token, setToken, toast, notify }) {
 
   return (
     <div className="app-layout">
-      <header className="topbar">
-        <h1>Employee Rating Dashboard</h1>
+      {isRatingsPage ? (
+        <button
+          type="button"
+          className="logout-icon-btn"
+          onClick={logout}
+          aria-label="Выйти"
+          title="Выйти"
+        >
+          ⎋
+        </button>
+      ) : null}
 
-        <div className="topbar-row">
-          <button type="button" onClick={logout}>
-            Выход
-          </button>
-        </div>
+      <header className={`topbar ${isRatingsPage ? "topbar-bottom" : ""}`}>
+        {!isRatingsPage ? <h1>Employee Rating Dashboard</h1> : null}
+
+        {!isRatingsPage ? (
+          <div className="topbar-row">
+            <button type="button" onClick={logout}>
+              Выход
+            </button>
+          </div>
+        ) : null}
 
         {toast ? <div className={`notice ${toast.type}`}>{toast.text}</div> : null}
 
         <nav className="nav">
-          <NavLink to="/branches">Филиалы</NavLink>
-          <NavLink to="/employees">Сотрудники</NavLink>
-          <NavLink to="/grades">Оценки</NavLink>
-          <NavLink to="/ratings">Рейтинги</NavLink>
+          <NavLink to="/branches" aria-label="Филиалы" title="Филиалы">
+            <span className="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 21H21" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M5 21V6.5C5 5.67 5.67 5 6.5 5H11V21" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M11 21V3.5C11 2.67 11.67 2 12.5 2H17.5C18.33 2 19 2.67 19 3.5V21" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M8 8H8.01M8 11H8.01M8 14H8.01M14 6H14.01M14 9H14.01M14 12H14.01M16 6H16.01M16 9H16.01M16 12H16.01" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+              </svg>
+            </span>
+          </NavLink>
+          <NavLink to="/employees" aria-label="Сотрудники" title="Сотрудники">
+            <span className="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="1.8"/>
+                <path d="M3.5 19C3.5 15.96 5.96 13.5 9 13.5C12.04 13.5 14.5 15.96 14.5 19" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <circle cx="17" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.8"/>
+                <path d="M14.5 19C14.62 16.77 16.46 15 18.72 15C20.95 15 22.77 16.72 23 18.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            </span>
+          </NavLink>
+          <NavLink to="/grades" aria-label="Оценки" title="Оценки">
+            <span className="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 3H15L20 8V21H6V3Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+                <path d="M15 3V8H20" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+                <path d="M9 12H16M9 16H16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            </span>
+          </NavLink>
+          <NavLink to="/ratings" aria-label="Рейтинг" title="Рейтинг">
+            <span className="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 4H17V7C17 9.76 14.76 12 12 12C9.24 12 7 9.76 7 7V4Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
+                <path d="M9 12V14.5C9 15.88 10.12 17 11.5 17H12.5C13.88 17 15 15.88 15 14.5V12" stroke="currentColor" strokeWidth="1.8"/>
+                <path d="M8 21H16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M7 5H4.5C4.22 5 4 5.22 4 5.5V7C4 9.21 5.79 11 8 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="M17 5H19.5C19.78 5 20 5.22 20 5.5V7C20 9.21 18.21 11 16 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            </span>
+          </NavLink>
         </nav>
       </header>
 
-      <main className="page">
+      <main className={`page ${isRatingsPage ? "page-with-bottom-header" : ""}`}>
         <Outlet />
       </main>
     </div>

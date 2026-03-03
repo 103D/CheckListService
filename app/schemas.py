@@ -66,6 +66,7 @@ class EmployeeResponse(BaseModel):
 
 class BranchCreate(BaseModel):
     name: str
+    city: str = "Almaty"
 
     @field_validator("name")
     @classmethod
@@ -88,6 +89,7 @@ class BranchCreate(BaseModel):
 class BranchResponse(BaseModel):
     id: int
     name: str
+    city: str
 
     class Config:
         from_attributes = True

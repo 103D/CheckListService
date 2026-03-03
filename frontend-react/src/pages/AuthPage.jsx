@@ -36,36 +36,36 @@ export default function AuthPage({ apiBaseUrl, onLogin, notify }) {
 
   return (
     <div className="auth-page">
-      <div className="auth-card">
-        <h1>Employee Rating</h1>
+      <div className="auth-background" aria-hidden="true" />
+      <div className="auth-overlay" aria-hidden="true" />
+
+      <div className="auth-modal" role="dialog" aria-labelledby="auth-title" aria-modal="true">
+        <h1 id="auth-title">Employee Rating</h1>
         <p className="muted">Только вход по логину и паролю.</p>
 
         {error ? <div className="notice error">{error}</div> : null}
 
-        <div className="auth-forms">
-          <form onSubmit={handleLogin} className="panel form-stack">
-            <h2>Логин</h2>
-            <input
-              placeholder="Никнейм"
-              type="text"
-              value={loginForm.username}
-              onChange={(e) =>
-                setLoginForm((prev) => ({ ...prev, username: e.target.value }))
-              }
-              required
-            />
-            <input
-              placeholder="Пароль"
-              type="password"
-              value={loginForm.password}
-              onChange={(e) =>
-                setLoginForm((prev) => ({ ...prev, password: e.target.value }))
-              }
-              required
-            />
-            <button type="submit">Войти</button>
-          </form>
-        </div>
+        <form onSubmit={handleLogin} className="auth-form">
+          <input
+            placeholder="Никнейм"
+            type="text"
+            value={loginForm.username}
+            onChange={(e) =>
+              setLoginForm((prev) => ({ ...prev, username: e.target.value }))
+            }
+            required
+          />
+          <input
+            placeholder="Пароль"
+            type="password"
+            value={loginForm.password}
+            onChange={(e) =>
+              setLoginForm((prev) => ({ ...prev, password: e.target.value }))
+            }
+            required
+          />
+          <button type="submit">Войти</button>
+        </form>
       </div>
     </div>
   );

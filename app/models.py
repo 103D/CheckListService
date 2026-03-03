@@ -11,6 +11,7 @@ class Branch(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String, unique=True)
+    city: Mapped[str] = mapped_column(String, default="Almaty")
 
     users = relationship("User", back_populates="branch")
     employees = relationship("Employee", back_populates="branch")
