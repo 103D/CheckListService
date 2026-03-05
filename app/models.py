@@ -1,6 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
+from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -36,11 +37,12 @@ class Employee(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String)
+    hired_at: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
 
     branch_id: Mapped[int] = mapped_column(ForeignKey("branches.id"))
 
     branch = relationship("Branch", back_populates="employees")
-    grades = relationship("Grade", back_populates="employee")
+    grades = relationship("Grade", back_populates="employee", cascade="all, delete-orphan")
 
 
 class Grade(Base):
@@ -50,6 +52,7 @@ class Grade(Base):
     value: Mapped[int] = mapped_column(Integer)
     comment: Mapped[str] = mapped_column(String, nullable=True)
     role_in_shift: Mapped[str] = mapped_column(String)  # Новое поле
+    status: Mapped[str] = mapped_column(String, default="APPROVED")  # PENDING, APPROVED, REJECTED
 
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"))
     manager_id: Mapped[int] = mapped_column(ForeignKey("users.id"))

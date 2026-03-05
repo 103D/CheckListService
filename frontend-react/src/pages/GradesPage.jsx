@@ -2,8 +2,18 @@ import { useEffect, useState } from "react";
 import { apiRequest } from "../api/client";
 import DataTable from "../components/DataTable";
 
+function getUserRole(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1] || ""));
+    return payload?.role || null;
+  } catch {
+    return null;
+  }
+}
+
 export default function GradesPage({ apiBaseUrl, token, notify }) {
   const shiftRoles = ["Кассир", "Продавец", "Официант", "Бариста"];
+  const userRole = getUserRole(token);
 
   const [createForm, setCreateForm] = useState({
     employee_id: "",
@@ -13,6 +23,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
   });
   const [employees, setEmployees] = useState([]);
   const [rows, setRows] = useState([]);
+  const [pendingGrades, setPendingGrades] = useState([]);
   const [error, setError] = useState("");
 
   const columns = [
@@ -20,6 +31,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     { key: "value", label: "Оценка" },
     { key: "role_in_shift", label: "Роль" },
     { key: "comment", label: "Комментарий" },
+    { key: "status", label: "Статус" },
     { key: "created_at", label: "Дата" },
   ];
 
@@ -67,6 +79,55 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     }
   };
 
+  const loadPendingGrades = async () => {
+    try {
+      const data = await apiRequest({
+        apiBaseUrl,
+        path: "/grades/pending",
+        token,
+      });
+      setPendingGrades(data);
+    } catch (err) {
+      notify("error", err.message);
+    }
+  };
+
+  const handleApprove = async (gradeId) => {
+    try {
+      await apiRequest({
+        apiBaseUrl,
+        path: `/grades/${gradeId}/approve`,
+        method: "PATCH",
+        token,
+      });
+      notify("success", "Оценка подтверждена");
+      await loadPendingGrades();
+      if (createForm.employee_id) {
+        await loadByEmployee(createForm.employee_id);
+      }
+    } catch (err) {
+      notify("error", err.message);
+    }
+  };
+
+  const handleReject = async (gradeId) => {
+    try {
+      await apiRequest({
+        apiBaseUrl,
+        path: `/grades/${gradeId}/reject`,
+        method: "PATCH",
+        token,
+      });
+      notify("success", "Оценка отклонена");
+      await loadPendingGrades();
+      if (createForm.employee_id) {
+        await loadByEmployee(createForm.employee_id);
+      }
+    } catch (err) {
+      notify("error", err.message);
+    }
+  };
+
   const handleCreate = async (event) => {
     event.preventDefault();
     setError("");
@@ -86,7 +147,8 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
       });
       setCreateForm((prev) => ({ ...prev, value: 100, comment: "" }));
       await loadByEmployee(createForm.employee_id);
-      notify("success", "Оценка добавлена");
+      await loadPendingGrades();
+      notify("success", userRole === "ADMIN" ? "Оценка добавлена" : "Оценка отправлена на подтверждение");
     } catch (err) {
       setError(err.message);
       notify("error", err.message);
@@ -95,7 +157,16 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
 
   useEffect(() => {
     loadEmployees();
+    loadPendingGrades();
   }, []);
+
+  const statusLabel = (status) => {
+    if (status === "APPROVED") return "✅ Подтверждена";
+    if (status === "REJECTED") return "❌ Отклонена";
+    return "⏳ Ожидает";
+  };
+
+  const employeeById = new Map(employees.map((e) => [e.id, e.name]));
 
   return (
     <section className="panel">
@@ -154,7 +225,84 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
       </form>
 
       {error ? <div className="notice error">{error}</div> : null}
-      <DataTable columns={columns} rows={rows} emptyText="Оценок пока нет" />
+
+      {(userRole === "ADMIN" || pendingGrades.length > 0) && (
+        <div style={{ marginTop: "1rem" }}>
+          <h3>{userRole === "ADMIN" ? "Ожидают подтверждения" : "Ваши оценки на рассмотрении"}</h3>
+          {pendingGrades.length === 0 ? (
+            <p className="empty">Нет оценок на рассмотрении</p>
+          ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Сотрудник</th>
+                  <th>Оценка</th>
+                  <th>Роль</th>
+                  <th>Комментарий</th>
+                  <th>Дата</th>
+                  <th title="Подтвердить">✅</th>
+                  <th title="Отклонить">🗑</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingGrades.map((grade) => (
+                  <tr key={grade.id}>
+                    <td>{employeeById.get(grade.employee_id) || grade.employee_id}</td>
+                    <td>{grade.value}</td>
+                    <td>{grade.role_in_shift}</td>
+                    <td>{grade.comment || "—"}</td>
+                    <td>{grade.created_at}</td>
+                    <td style={{ textAlign: "center" }}>
+                      <input
+                        type="radio"
+                        name={`grade-${grade.id}`}
+                        title="Подтвердить"
+                        onChange={() => handleApprove(grade.id)}
+                      />
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      <span
+                        role="button"
+                        title="Отклонить"
+                        style={{ cursor: "pointer", fontSize: "1.1rem" }}
+                        onClick={() => handleReject(grade.id)}
+                      >
+                        🗑
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ marginTop: "1rem" }}>
+        <h3>История оценок</h3>
+        <select
+          value={createForm.employee_id}
+          onChange={(e) => {
+            const id = Number(e.target.value);
+            setCreateForm((prev) => ({ ...prev, employee_id: id }));
+            loadByEmployee(id);
+          }}
+          style={{ marginBottom: "0.5rem" }}
+        >
+          {employees.map((employee) => (
+            <option key={employee.id} value={employee.id}>
+              {employee.name}
+            </option>
+          ))}
+        </select>
+        <DataTable
+          columns={columns}
+          rows={rows.map((r) => ({ ...r, status: statusLabel(r.status) }))}
+          emptyText="Оценок пока нет"
+        />
+      </div>
     </section>
   );
 }

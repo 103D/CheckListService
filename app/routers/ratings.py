@@ -45,7 +45,7 @@ def get_branch_ratings(
             func.avg(Grade.value).label("average_score"),
             func.count(Grade.id).label("total_grades"),
         )
-        .outerjoin(Grade, Employee.id == Grade.employee_id)
+        .outerjoin(Grade, (Employee.id == Grade.employee_id) & (Grade.status == "APPROVED"))
         .filter(Employee.branch_id == branch_id)
         .group_by(Employee.id)
         .order_by(func.avg(Grade.value).desc())
@@ -59,17 +59,22 @@ def get_branch_ratings(
 def get_all_ratings(
     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != "ADMIN":
-        raise HTTPException(status_code=403, detail="Not authorized")
-
-    ratings = (
+    query = (
         db.query(
             Employee.id.label("employee_id"),
             Employee.name.label("employee_name"),
             func.avg(Grade.value).label("average_score"),
             func.count(Grade.id).label("total_grades"),
         )
-        .outerjoin(Grade, Employee.id == Grade.employee_id)
+        .outerjoin(Grade, (Employee.id == Grade.employee_id) & (Grade.status == "APPROVED"))
+    )
+
+    # MANAGER видит только сотрудников своего филиала
+    if current_user.role == "MANAGER":
+        query = query.filter(Employee.branch_id == current_user.branch_id)
+
+    ratings = (
+        query
         .group_by(Employee.id)
         .order_by(func.avg(Grade.value).desc())
         .all()
@@ -94,7 +99,7 @@ def get_top_employees(
         Employee.name.label("employee_name"),
         func.avg(Grade.value).label("average_score"),
         func.count(Grade.id).label("total_grades"),
-    ).outerjoin(Grade, Employee.id == Grade.employee_id)
+    ).outerjoin(Grade, (Employee.id == Grade.employee_id) & (Grade.status == "APPROVED"))
 
     # MANAGER видит только свой филиал
     if current_user.role == "MANAGER":

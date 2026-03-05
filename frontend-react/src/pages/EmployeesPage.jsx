@@ -1,18 +1,31 @@
 import { useEffect, useState } from "react";
 import { apiRequest } from "../api/client";
-import DataTable from "../components/DataTable";
+
+function getUserRole(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1] || ""));
+    return payload?.role || null;
+  } catch {
+    return null;
+  }
+}
+
+function getBranchIdFromToken(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1] || ""));
+    return payload?.branch_id || null;
+  } catch {
+    return null;
+  }
+}
 
 export default function EmployeesPage({ apiBaseUrl, token, notify }) {
-  const [form, setForm] = useState({ name: "", branch_id: "" });
+  const [form, setForm] = useState({ name: "", branch_id: "", hired_at: "" });
   const [branches, setBranches] = useState([]);
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
-
-  const columns = [
-    { key: "id", label: "ID" },
-    { key: "name", label: "Имя" },
-    { key: "branch_id", label: "Филиал" },
-  ];
+  const userRole = getUserRole(token);
+  const managerBranchId = getBranchIdFromToken(token);
 
   const loadEmployees = async () => {
     setError("");
@@ -40,10 +53,14 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
       setBranches(data);
       if (data.length > 0) {
         const firstId = Number(data[0].id);
-        setForm((prev) => ({
-          ...prev,
-          branch_id: prev.branch_id || firstId,
-        }));
+        if (userRole === "MANAGER") {
+          setForm((prev) => ({ ...prev, branch_id: managerBranchId || firstId }));
+        } else {
+          setForm((prev) => ({
+            ...prev,
+            branch_id: prev.branch_id || firstId,
+          }));
+        }
       }
     } catch (err) {
       setError(err.message);
@@ -69,15 +86,41 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
         body: {
           name: form.name,
           branch_id: Number(form.branch_id),
+          hired_at: form.hired_at || null,
         },
       });
-      setForm((prev) => ({ ...prev, name: "" }));
+      setForm((prev) => ({ ...prev, name: "", hired_at: "" }));
       await loadEmployees();
       notify("success", "Сотрудник создан");
     } catch (err) {
       setError(err.message);
       notify("error", err.message);
     }
+  };
+
+  const handleDelete = async (employeeId) => {
+    try {
+      await apiRequest({
+        apiBaseUrl,
+        path: `/employees/${employeeId}`,
+        method: "DELETE",
+        token,
+      });
+      await loadEmployees();
+      notify("success", "Сотрудник удалён");
+    } catch (err) {
+      notify("error", err.message);
+    }
+  };
+
+  const branchById = new Map(branches.map((b) => [b.id, b.name]));
+
+  const getEmployeeCode = (row) => {
+    const sameBranch = rows
+      .filter((r) => r.branch_id === row.branch_id)
+      .sort((a, b) => a.id - b.id);
+    const seq = sameBranch.findIndex((r) => r.id === row.id) + 1;
+    return String(row.branch_id).padStart(2, "0") + String(seq).padStart(2, "0");
   };
 
   return (
@@ -97,25 +140,65 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
           onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
           required
         />
-        <select
-          value={form.branch_id}
-          onChange={(e) =>
-            setForm((prev) => ({ ...prev, branch_id: Number(e.target.value) }))
-          }
+        {userRole === "ADMIN" ? (
+          <select
+            value={form.branch_id}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, branch_id: Number(e.target.value) }))
+            }
+            required
+          >
+            {branches.length === 0 ? <option value="">Нет филиалов</option> : null}
+            {branches.map((branch) => (
+              <option key={branch.id} value={branch.id}>
+                {branch.name}
+              </option>
+            ))}
+          </select>
+        ) : null}
+        <input
+          type="date"
+          value={form.hired_at}
+          onChange={(e) => setForm((prev) => ({ ...prev, hired_at: e.target.value }))}
           required
-        >
-          {branches.length === 0 ? <option value="">Нет филиалов</option> : null}
-          {branches.map((branch) => (
-            <option key={branch.id} value={branch.id}>
-              {branch.name}
-            </option>
-          ))}
-        </select>
+        />
         <button type="submit">Создать</button>
       </form>
 
       {error ? <div className="notice error">{error}</div> : null}
-      <DataTable columns={columns} rows={rows} emptyText="Сотрудников пока нет" />
+
+      {rows.length === 0 ? (
+        <p className="empty">Сотрудников пока нет</p>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Код</th>
+                <th>Имя</th>
+                <th>Филиал</th>
+                <th>Дата приёма</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td>{getEmployeeCode(row)}</td>
+                  <td>{row.name}</td>
+                  <td>{branchById.get(row.branch_id) || row.branch_id}</td>
+                  <td>{row.hired_at || "—"}</td>
+                  <td>
+                    <button type="button" onClick={() => handleDelete(row.id)}>
+                      Удалить
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }

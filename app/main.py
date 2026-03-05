@@ -26,7 +26,10 @@ def on_startup():
     models.Base.metadata.create_all(bind=engine)
     ensure_grade_created_at_column()
     ensure_grade_role_in_shift_column()
+    ensure_grade_status_column()
+    ensure_employee_hired_at_column()
     ensure_branch_city_column()
+    reset_sequences()
     seed_demo_employees_and_grades()
     print("DONE")
 
@@ -74,6 +77,37 @@ def ensure_grade_role_in_shift_column() -> None:
         )
 
 
+def ensure_grade_status_column() -> None:
+    inspector = inspect(engine)
+    if "grades" not in inspector.get_table_names():
+        return
+
+    grade_columns = {column["name"] for column in inspector.get_columns("grades")}
+
+    with engine.begin() as connection:
+        if "status" not in grade_columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE grades "
+                    "ADD COLUMN status VARCHAR NOT NULL DEFAULT 'APPROVED'"
+                )
+            )
+
+
+def ensure_employee_hired_at_column() -> None:
+    inspector = inspect(engine)
+    if "employees" not in inspector.get_table_names():
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("employees")}
+
+    if "hired_at" not in columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE employees ADD COLUMN hired_at DATE")
+            )
+
+
 def ensure_branch_city_column() -> None:
     inspector = inspect(engine)
     if "branches" not in inspector.get_table_names():
@@ -97,6 +131,19 @@ def ensure_branch_city_column() -> None:
                 "WHERE city IS NULL OR TRIM(city) = ''"
             )
         )
+
+
+def reset_sequences() -> None:
+    tables = ["employees", "grades", "branches", "users"]
+    with engine.begin() as connection:
+        for table in tables:
+            seq_name = f"{table}_id_seq"
+            result = connection.execute(
+                text(f"SELECT COALESCE(MAX(id), 0) FROM {table}")
+            ).scalar()
+            connection.execute(
+                text(f"ALTER SEQUENCE {seq_name} RESTART WITH {result + 1}")
+            )
 
 
 def seed_demo_employees_and_grades() -> None:

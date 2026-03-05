@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -44,6 +44,7 @@ class GradeResponse(BaseModel):
     comment: Optional[str]
     employee_id: int
     manager_id: int
+    status: str
     created_at: datetime
 
     class Config:
@@ -52,13 +53,15 @@ class GradeResponse(BaseModel):
 
 class EmployeeCreate(BaseModel):
     name: str
-    branch_id: int  # филиал, к которому принадлежит сотрудник
+    branch_id: int
+    hired_at: Optional[date] = None
 
 
 class EmployeeResponse(BaseModel):
     id: int
     name: str
     branch_id: int
+    hired_at: Optional[date] = None
 
     class Config:
         from_attributes = True

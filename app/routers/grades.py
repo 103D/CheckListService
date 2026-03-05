@@ -50,6 +50,7 @@ def create_grade(
         comment=grade_data.comment,
         employee_id=grade_data.employee_id,
         manager_id=current_user.id,
+        status="APPROVED" if current_user.role == "ADMIN" else "PENDING",
     )
     db.add(grade)
     db.commit()
@@ -77,3 +78,53 @@ def get_grades_for_employee(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     return db.query(Grade).filter(Grade.employee_id == employee_id).all()
+
+
+@router.get("/pending", response_model=List[GradeResponse])
+def get_pending_grades(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Returns all pending grades. ADMIN sees all, MANAGER sees only own."""
+    query = db.query(Grade).filter(Grade.status == "PENDING")
+    if current_user.role == "MANAGER":
+        query = query.filter(Grade.manager_id == current_user.id)
+    return query.order_by(Grade.created_at.desc()).all()
+
+
+@router.patch("/{grade_id}/approve", response_model=GradeResponse)
+def approve_grade(
+    grade_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="Только админ может подтверждать оценки")
+    grade = db.query(Grade).filter(Grade.id == grade_id).first()
+    if not grade:
+        raise HTTPException(status_code=404, detail="Оценка не найдена")
+    if grade.status != "PENDING":
+        raise HTTPException(status_code=400, detail="Оценка уже обработана")
+    grade.status = "APPROVED"
+    db.commit()
+    db.refresh(grade)
+    return grade
+
+
+@router.patch("/{grade_id}/reject", response_model=GradeResponse)
+def reject_grade(
+    grade_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="Только админ может отклонять оценки")
+    grade = db.query(Grade).filter(Grade.id == grade_id).first()
+    if not grade:
+        raise HTTPException(status_code=404, detail="Оценка не найдена")
+    if grade.status != "PENDING":
+        raise HTTPException(status_code=400, detail="Оценка уже обработана")
+    grade.status = "REJECTED"
+    db.commit()
+    db.refresh(grade)
+    return grade

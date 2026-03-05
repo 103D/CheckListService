@@ -22,7 +22,11 @@ def get_current_user(
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")
         user = db.query(User).filter(User.username == username).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid token")
         return user
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -36,20 +40,19 @@ def create_employee(
     # Только MANAGER и ADMIN могут создавать сотрудников
     if current_user.role not in ["ADMIN", "MANAGER"]:
         raise HTTPException(status_code=403, detail="Not authorized")
-    # MANAGER может создавать сотрудников только в своем филиале
-    if (
-        current_user.role == "MANAGER"
-        and employee_data.branch_id != current_user.branch_id
-    ):
-        raise HTTPException(
-            status_code=403, detail="Cannot create employee in other branch"
-        )
+    # MANAGER — принудительно используем его филиал
+    if current_user.role == "MANAGER":
+        employee_data.branch_id = current_user.branch_id
 
     branch = db.query(Branch).filter(Branch.id == employee_data.branch_id).first()
     if not branch:
         raise HTTPException(status_code=400, detail="Branch not found")
 
-    employee = Employee(name=employee_data.name, branch_id=employee_data.branch_id)
+    employee = Employee(
+        name=employee_data.name,
+        branch_id=employee_data.branch_id,
+        hired_at=employee_data.hired_at,
+    )
     db.add(employee)
     db.commit()
     db.refresh(employee)
@@ -68,3 +71,25 @@ def get_employees(
             .filter(Employee.branch_id == current_user.branch_id)
             .all()
         )
+
+
+@router.delete("/{employee_id}", status_code=204)
+def delete_employee(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role not in ["ADMIN", "MANAGER"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    if current_user.role == "MANAGER" and employee.branch_id != current_user.branch_id:
+        raise HTTPException(
+            status_code=403, detail="Нельзя удалить сотрудника из другого филиала"
+        )
+
+    db.delete(employee)
+    db.commit()
