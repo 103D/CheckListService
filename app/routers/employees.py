@@ -9,6 +9,7 @@ from app.core.security import ALGORITHM, SECRET_KEY
 from app.database import get_db
 from app.models import Branch, Employee, User
 from app.schemas import EmployeeCreate, EmployeeResponse
+from app.utils.employee_ids import next_employee_id_for_branch
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -48,7 +49,13 @@ def create_employee(
     if not branch:
         raise HTTPException(status_code=400, detail="Branch not found")
 
+    try:
+        employee_id = next_employee_id_for_branch(db, employee_data.branch_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     employee = Employee(
+        id=employee_id,
         name=employee_data.name,
         branch_id=employee_data.branch_id,
         hired_at=employee_data.hired_at,

@@ -20,7 +20,12 @@ function getBranchIdFromToken(token) {
 }
 
 export default function EmployeesPage({ apiBaseUrl, token, notify }) {
-  const [form, setForm] = useState({ name: "", branch_id: "", hired_at: "" });
+  const [form, setForm] = useState({
+    name: "",
+    branch_id: "",
+    branch_name: "",
+    hired_at: "",
+  });
   const [branches, setBranches] = useState([]);
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
@@ -59,6 +64,7 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
           setForm((prev) => ({
             ...prev,
             branch_id: prev.branch_id || firstId,
+            branch_name: prev.branch_name || String(data[0].name || ""),
           }));
         }
       }
@@ -78,6 +84,18 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
     setError("");
 
     try {
+      let resolvedBranchId = Number(form.branch_id);
+      if (userRole === "ADMIN") {
+        const normalized = form.branch_name.trim().toLowerCase();
+        const matchedBranch = branches.find(
+          (branch) => String(branch.name).trim().toLowerCase() === normalized,
+        );
+        if (!matchedBranch) {
+          throw new Error("Филиал с таким названием не найден. Сначала создайте филиал.");
+        }
+        resolvedBranchId = Number(matchedBranch.id);
+      }
+
       await apiRequest({
         apiBaseUrl,
         path: "/employees/",
@@ -85,7 +103,7 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
         token,
         body: {
           name: form.name,
-          branch_id: Number(form.branch_id),
+          branch_id: resolvedBranchId,
           hired_at: form.hired_at || null,
         },
       });
@@ -141,26 +159,29 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
           required
         />
         {userRole === "ADMIN" ? (
-          <select
-            value={form.branch_id}
-            onChange={(e) =>
-              setForm((prev) => ({ ...prev, branch_id: Number(e.target.value) }))
-            }
-            required
-          >
-            {branches.length === 0 ? <option value="">Нет филиалов</option> : null}
-            {branches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
+          <>
+            <input
+              type="text"
+              list="branch-options"
+              placeholder="Название филиала"
+              value={form.branch_name}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, branch_name: e.target.value }))
+              }
+              required
+            />
+            <datalist id="branch-options">
+              {branches.map((branch) => (
+                <option key={branch.id} value={branch.name} />
+              ))}
+            </datalist>
+          </>
         ) : null}
         <input
           type="date"
           value={form.hired_at}
           onChange={(e) => setForm((prev) => ({ ...prev, hired_at: e.target.value }))}
-          required
+            required
         />
         <button type="submit">Создать</button>
       </form>

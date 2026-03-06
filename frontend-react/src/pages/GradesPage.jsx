@@ -14,6 +14,7 @@ function getUserRole(token) {
 export default function GradesPage({ apiBaseUrl, token, notify }) {
   const shiftRoles = ["Кассир", "Продавец", "Официант", "Бариста"];
   const userRole = getUserRole(token);
+  const canModeratePending = userRole === "ADMIN";
 
   const [createForm, setCreateForm] = useState({
     employee_id: "",
@@ -22,18 +23,32 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     comment: "",
   });
   const [employees, setEmployees] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [rows, setRows] = useState([]);
   const [pendingGrades, setPendingGrades] = useState([]);
   const [error, setError] = useState("");
 
   const columns = [
     { key: "employee_id", label: "Сотрудник" },
+    ...(userRole === "ADMIN" ? [{ key: "branch", label: "Филиал" }] : []),
     { key: "value", label: "Оценка" },
     { key: "role_in_shift", label: "Роль" },
     { key: "comment", label: "Комментарий" },
     { key: "status", label: "Статус" },
     { key: "created_at", label: "Дата" },
   ];
+
+  const loadBranches = async () => {
+    try {
+      const data = await apiRequest({
+        apiBaseUrl,
+        path: "/branches/",
+      });
+      setBranches(data);
+    } catch {
+      setBranches([]);
+    }
+  };
 
   const loadEmployees = async () => {
     setError("");
@@ -157,6 +172,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
 
   useEffect(() => {
     loadEmployees();
+    loadBranches();
     loadPendingGrades();
   }, []);
 
@@ -167,6 +183,14 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
   };
 
   const employeeById = new Map(employees.map((e) => [e.id, e.name]));
+  const employeeBranchIdById = new Map(employees.map((e) => [e.id, e.branch_id]));
+  const branchNameById = new Map(branches.map((b) => [b.id, b.name]));
+
+  const getBranchLabel = (employeeId) => {
+    const branchId = employeeBranchIdById.get(employeeId);
+    if (!branchId) return "—";
+    return branchNameById.get(branchId) || `#${branchId}`;
+  };
 
   return (
     <section className="panel">
@@ -237,40 +261,46 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
               <thead>
                 <tr>
                   <th>Сотрудник</th>
+                  {userRole === "ADMIN" ? <th>Филиал</th> : null}
                   <th>Оценка</th>
                   <th>Роль</th>
                   <th>Комментарий</th>
                   <th>Дата</th>
-                  <th title="Подтвердить">✅</th>
-                  <th title="Отклонить">🗑</th>
+                  {canModeratePending ? <th title="Подтвердить">✅</th> : null}
+                  {canModeratePending ? <th title="Отклонить">🗑</th> : null}
                 </tr>
               </thead>
               <tbody>
                 {pendingGrades.map((grade) => (
                   <tr key={grade.id}>
                     <td>{employeeById.get(grade.employee_id) || grade.employee_id}</td>
+                    {userRole === "ADMIN" ? <td>{getBranchLabel(grade.employee_id)}</td> : null}
                     <td>{grade.value}</td>
                     <td>{grade.role_in_shift}</td>
                     <td>{grade.comment || "—"}</td>
                     <td>{grade.created_at}</td>
-                    <td style={{ textAlign: "center" }}>
-                      <input
-                        type="radio"
-                        name={`grade-${grade.id}`}
-                        title="Подтвердить"
-                        onChange={() => handleApprove(grade.id)}
-                      />
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      <span
-                        role="button"
-                        title="Отклонить"
-                        style={{ cursor: "pointer", fontSize: "1.1rem" }}
-                        onClick={() => handleReject(grade.id)}
-                      >
-                        🗑
-                      </span>
-                    </td>
+                    {canModeratePending ? (
+                      <td style={{ textAlign: "center" }}>
+                        <input
+                          type="radio"
+                          name={`grade-${grade.id}`}
+                          title="Подтвердить"
+                          onChange={() => handleApprove(grade.id)}
+                        />
+                      </td>
+                    ) : null}
+                    {canModeratePending ? (
+                      <td style={{ textAlign: "center" }}>
+                        <span
+                          role="button"
+                          title="Отклонить"
+                          style={{ cursor: "pointer", fontSize: "1.1rem" }}
+                          onClick={() => handleReject(grade.id)}
+                        >
+                          🗑
+                        </span>
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -299,7 +329,11 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
         </select>
         <DataTable
           columns={columns}
-          rows={rows.map((r) => ({ ...r, status: statusLabel(r.status) }))}
+          rows={rows.map((r) => ({
+            ...r,
+            branch: getBranchLabel(r.employee_id),
+            status: statusLabel(r.status),
+          }))}
           emptyText="Оценок пока нет"
         />
       </div>

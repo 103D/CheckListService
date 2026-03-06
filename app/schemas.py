@@ -74,19 +74,10 @@ class BranchCreate(BaseModel):
     @field_validator("name")
     @classmethod
     def validate_branch_name(cls, value: str) -> str:
-        branch_map = {
-            "амир": "Амир",
-            "достык": "Достык",
-            "сейфуллина": "Сейфуллина",
-            "лассио": "Лассио",
-            "рахат": "Рахат",
-        }
-        normalized = value.strip().lower()
-        if normalized not in branch_map:
-            raise ValueError(
-                "Branch name must be one of: Амир, Достык, Сейфуллина, Лассио, Рахат"
-            )
-        return branch_map[normalized]
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Branch name cannot be empty")
+        return normalized
 
 
 class BranchResponse(BaseModel):
@@ -96,6 +87,19 @@ class BranchResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class BranchUpdate(BaseModel):
+    name: str
+    city: str = "Almaty"
+
+    @field_validator("name")
+    @classmethod
+    def validate_branch_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("Branch name cannot be empty")
+        return normalized
 
 
 class UserCreate(BaseModel):
