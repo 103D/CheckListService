@@ -33,7 +33,9 @@ def create_branch(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role != "ADMIN":
-        raise HTTPException(status_code=403, detail="Только администратор может создавать филиалы")
+        raise HTTPException(
+            status_code=403, detail="Только администратор может создавать филиалы"
+        )
     branch = Branch(name=branch_data.name, city=branch_data.city or "Almaty")
     db.add(branch)
     db.commit()
@@ -54,7 +56,9 @@ def update_branch(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role != "ADMIN":
-        raise HTTPException(status_code=403, detail="Только администратор может изменять филиалы")
+        raise HTTPException(
+            status_code=403, detail="Только администратор может изменять филиалы"
+        )
 
     branch = db.query(Branch).filter(Branch.id == branch_id).first()
     if not branch:
@@ -74,13 +78,17 @@ def delete_branch(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role != "ADMIN":
-        raise HTTPException(status_code=403, detail="Только администратор может удалять филиалы")
+        raise HTTPException(
+            status_code=403, detail="Только администратор может удалять филиалы"
+        )
 
     branch = db.query(Branch).filter(Branch.id == branch_id).first()
     if not branch:
         raise HTTPException(status_code=404, detail="Филиал не найден")
 
-    has_employees = db.query(Employee.id).filter(Employee.branch_id == branch_id).first()
+    has_employees = (
+        db.query(Employee.id).filter(Employee.branch_id == branch_id).first()
+    )
     has_users = db.query(User.id).filter(User.branch_id == branch_id).first()
     if has_employees or has_users:
         raise HTTPException(
