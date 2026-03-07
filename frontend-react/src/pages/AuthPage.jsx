@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FiLogIn } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../api/client";
 
@@ -64,7 +65,9 @@ export default function AuthPage({ apiBaseUrl, onLogin, notify }) {
             }
             required
           />
-          <button type="submit">Войти</button>
+          <button type="submit" className="icon-btn" aria-label="Войти" title="Войти">
+            <FiLogIn aria-hidden="true" />
+          </button>
         </form>
       </div>
     </div>

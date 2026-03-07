@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FiLoader, FiUserPlus } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../api/client";
 
@@ -110,8 +111,14 @@ export default function SecretRegisterPage({ apiBaseUrl, notify }) {
               </option>
             ))}
           </select>
-          <button type="submit" disabled={loading}>
-            {loading ? "Создание..." : "Создать аккаунт"}
+          <button
+            type="submit"
+            disabled={loading}
+            className="icon-btn"
+            aria-label="Создать аккаунт"
+            title="Создать аккаунт"
+          >
+            {loading ? <FiLoader className="spin-icon" aria-hidden="true" /> : <FiUserPlus aria-hidden="true" />}
           </button>
         </form>
       </div>

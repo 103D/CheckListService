@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { FiRefreshCw } from "react-icons/fi";
 import { apiRequest } from "../api/client";
 
 export default function RatingsPage({ apiBaseUrl, token, notify }) {
@@ -129,8 +130,14 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
       <div className="panel rating-main-panel">
         <div className="panel-head">
           <h2>Рейтинг сотрудников</h2>
-          <button type="button" onClick={loadRatings}>
-            Обновить
+          <button
+            type="button"
+            onClick={loadRatings}
+            className="icon-btn"
+            aria-label="Обновить"
+            title="Обновить"
+          >
+            <FiRefreshCw aria-hidden="true" />
           </button>
         </div>
 

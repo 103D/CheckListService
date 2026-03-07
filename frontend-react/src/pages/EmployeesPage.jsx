@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FiPlus, FiRefreshCw, FiTrash2 } from "react-icons/fi";
 import { apiRequest } from "../api/client";
 
 function getUserRole(token) {
@@ -145,8 +146,14 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
     <section className="panel">
       <div className="panel-head">
         <h2>Сотрудники</h2>
-        <button type="button" onClick={loadEmployees}>
-          Обновить
+        <button
+          type="button"
+          onClick={loadEmployees}
+          className="icon-btn"
+          aria-label="Обновить"
+          title="Обновить"
+        >
+          <FiRefreshCw aria-hidden="true" />
         </button>
       </div>
 
@@ -183,7 +190,9 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
           onChange={(e) => setForm((prev) => ({ ...prev, hired_at: e.target.value }))}
             required
         />
-        <button type="submit">Создать</button>
+        <button type="submit" className="icon-btn" aria-label="Создать" title="Создать">
+          <FiPlus aria-hidden="true" />
+        </button>
       </form>
 
       {error ? <div className="notice error">{error}</div> : null}
@@ -210,8 +219,14 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
                   <td>{branchById.get(row.branch_id) || row.branch_id}</td>
                   <td>{row.hired_at || "—"}</td>
                   <td>
-                    <button type="button" onClick={() => handleDelete(row.id)}>
-                      Удалить
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(row.id)}
+                      className="icon-btn"
+                      aria-label="Удалить"
+                      title="Удалить"
+                    >
+                      <FiTrash2 aria-hidden="true" />
                     </button>
                   </td>
                 </tr>

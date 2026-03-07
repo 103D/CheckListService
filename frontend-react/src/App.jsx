@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
+import { FiLogOut } from "react-icons/fi";
 import {
     Navigate,
     NavLink,
     Outlet,
     Route,
     Routes,
-    useLocation,
     useNavigate,
 } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -94,8 +94,6 @@ function App() {
 
 function AppLayout({ token, setToken, toast, notify }) {
   const navigate = useNavigate();
-  const location = useLocation();
-  const isRatingsPage = location.pathname === "/ratings";
 
   const logout = () => {
     setToken("");
@@ -105,26 +103,23 @@ function AppLayout({ token, setToken, toast, notify }) {
 
   return (
     <div className="app-layout">
-      {!isRatingsPage ? (
-        <header className="topbar">
+      <header className="topbar">
+        <div className="brand-block">
+          <img src="/1.jpg" alt="Логотип" className="brand-logo" />
           <h1>Employee Rating Dashboard</h1>
-          <div className="topbar-row">
-            <button type="button" onClick={logout}>
-              Выход
-            </button>
-          </div>
-        </header>
-      ) : (
-        <button
-          type="button"
-          className="logout-icon-btn"
-          onClick={logout}
-          aria-label="Выйти"
-          title="Выйти"
-        >
-          ⎋
-        </button>
-      )}
+        </div>
+        <div className="topbar-row">
+          <button
+            type="button"
+            className="topbar-logout icon-btn"
+            onClick={logout}
+            aria-label="Выход"
+            title="Выход"
+          >
+            <FiLogOut aria-hidden="true" />
+          </button>
+        </div>
+      </header>
 
       {toast ? <div className={`notice toast-fixed ${toast.type}`}>{toast.text}</div> : null}
 

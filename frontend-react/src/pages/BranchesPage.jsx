@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FiCheck, FiEdit2, FiPlus, FiRefreshCw, FiTrash2, FiX } from "react-icons/fi";
 import { apiRequest } from "../api/client";
 
 function getUserRole(token) {
@@ -118,8 +119,14 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
     <section className="panel">
       <div className="panel-head">
         <h2>Филиалы</h2>
-        <button type="button" onClick={loadBranches}>
-          Обновить
+        <button
+          type="button"
+          onClick={loadBranches}
+          className="icon-btn"
+          aria-label="Обновить"
+          title="Обновить"
+        >
+          <FiRefreshCw aria-hidden="true" />
         </button>
       </div>
 
@@ -138,7 +145,9 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
             value={city}
             onChange={(e) => setCity(e.target.value)}
           />
-          <button type="submit">Создать</button>
+          <button type="submit" className="icon-btn" aria-label="Создать" title="Создать">
+            <FiPlus aria-hidden="true" />
+          </button>
         </form>
       )}
 
@@ -189,20 +198,44 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
                       <td>
                         {isEditing ? (
                           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                            <button type="button" onClick={() => handleUpdate(row.id)}>
-                              Сохранить
+                            <button
+                              type="button"
+                              onClick={() => handleUpdate(row.id)}
+                              className="icon-btn"
+                              aria-label="Сохранить"
+                              title="Сохранить"
+                            >
+                              <FiCheck aria-hidden="true" />
                             </button>
-                            <button type="button" onClick={cancelEdit}>
-                              Отмена
+                            <button
+                              type="button"
+                              onClick={cancelEdit}
+                              className="icon-btn"
+                              aria-label="Отмена"
+                              title="Отмена"
+                            >
+                              <FiX aria-hidden="true" />
                             </button>
                           </div>
                         ) : (
                           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                            <button type="button" onClick={() => startEdit(row)}>
-                              Изменить
+                            <button
+                              type="button"
+                              onClick={() => startEdit(row)}
+                              className="icon-btn"
+                              aria-label="Изменить"
+                              title="Изменить"
+                            >
+                              <FiEdit2 aria-hidden="true" />
                             </button>
-                            <button type="button" onClick={() => handleDelete(row)}>
-                              Удалить
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(row)}
+                              className="icon-btn"
+                              aria-label="Удалить"
+                              title="Удалить"
+                            >
+                              <FiTrash2 aria-hidden="true" />
                             </button>
                           </div>
                         )}

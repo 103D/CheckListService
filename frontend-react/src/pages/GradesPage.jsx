@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FiPlus } from "react-icons/fi";
 import { apiRequest } from "../api/client";
 import DataTable from "../components/DataTable";
 
@@ -245,7 +246,14 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
             setCreateForm((prev) => ({ ...prev, comment: e.target.value }))
           }
         />
-        <button type="submit">Добавить оценку</button>
+        <button
+          type="submit"
+          className="icon-btn"
+          aria-label="Добавить оценку"
+          title="Добавить оценку"
+        >
+          <FiPlus aria-hidden="true" />
+        </button>
       </form>
 
       {error ? <div className="notice error">{error}</div> : null}
