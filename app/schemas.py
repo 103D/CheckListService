@@ -51,6 +51,11 @@ class GradeResponse(BaseModel):
         from_attributes = True
 
 
+class EmployeeMonthlyGradeCount(BaseModel):
+    employee_id: int
+    grades_count: int
+
+
 class EmployeeCreate(BaseModel):
     name: str
     branch_id: int

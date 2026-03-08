@@ -1,17 +1,29 @@
+from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from app.core.security import ALGORITHM, SECRET_KEY
 from app.database import get_db
 from app.models import Employee, Grade, User
-from app.schemas import GradeCreate, GradeResponse
+from app.schemas import EmployeeMonthlyGradeCount, GradeCreate, GradeResponse
 
 router = APIRouter(prefix="/grades", tags=["Grades"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+
+def _current_month_bounds() -> tuple[datetime, datetime]:
+    now = datetime.utcnow()
+    month_start = datetime(now.year, now.month, 1)
+    if now.month == 12:
+        next_month_start = datetime(now.year + 1, 1, 1)
+    else:
+        next_month_start = datetime(now.year, now.month + 1, 1)
+    return month_start, next_month_start
 
 
 def get_current_user(
@@ -20,8 +32,16 @@ def get_current_user(
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")
+        if not username:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
         user = db.query(User).filter(User.username == username).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
         return user
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -80,6 +100,31 @@ def get_grades_for_employee(
     return db.query(Grade).filter(Grade.employee_id == employee_id).all()
 
 
+@router.get("/monthly-counts", response_model=List[EmployeeMonthlyGradeCount])
+def get_monthly_grade_counts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    month_start, next_month_start = _current_month_bounds()
+
+    query = db.query(
+        Employee.id.label("employee_id"),
+        func.count(Grade.id).label("grades_count"),
+    ).outerjoin(
+        Grade,
+        and_(
+            Employee.id == Grade.employee_id,
+            Grade.created_at >= month_start,
+            Grade.created_at < next_month_start,
+        ),
+    )
+
+    if current_user.role == "MANAGER":
+        query = query.filter(Employee.branch_id == current_user.branch_id)
+
+    return query.group_by(Employee.id).all()
+
+
 @router.get("/pending", response_model=List[GradeResponse])
 def get_pending_grades(
     db: Session = Depends(get_db),
@@ -99,7 +144,9 @@ def approve_grade(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role != "ADMIN":
-        raise HTTPException(status_code=403, detail="Только админ может подтверждать оценки")
+        raise HTTPException(
+            status_code=403, detail="Только админ может подтверждать оценки"
+        )
     grade = db.query(Grade).filter(Grade.id == grade_id).first()
     if not grade:
         raise HTTPException(status_code=404, detail="Оценка не найдена")
@@ -118,7 +165,9 @@ def reject_grade(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role != "ADMIN":
-        raise HTTPException(status_code=403, detail="Только админ может отклонять оценки")
+        raise HTTPException(
+            status_code=403, detail="Только админ может отклонять оценки"
+        )
     grade = db.query(Grade).filter(Grade.id == grade_id).first()
     if not grade:
         raise HTTPException(status_code=404, detail="Оценка не найдена")

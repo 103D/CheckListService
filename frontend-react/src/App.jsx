@@ -17,8 +17,13 @@ import RatingsPage from "./pages/RatingsPage";
 import SecretRegisterPage from "./pages/SecretRegisterPage";
 
 function App() {
+  const defaultApiBaseUrl =
+    localStorage.getItem("apiBaseUrl") ||
+    import.meta.env.VITE_API_BASE_URL ||
+    inferApiBaseUrl();
+
   const [apiBaseUrl, setApiBaseUrl] = useState(
-    localStorage.getItem("apiBaseUrl") || "http://127.0.0.1:8001",
+    defaultApiBaseUrl,
   );
   const [token, setToken] = useState(localStorage.getItem("accessToken") || "");
   const [toast, setToast] = useState(null);
@@ -90,6 +95,16 @@ function App() {
       <Route path="*" element={<Navigate to={token ? "/branches" : "/auth"} replace />} />
     </Routes>
   );
+}
+
+function inferApiBaseUrl() {
+  if (typeof window === "undefined") {
+    return "/api";
+  }
+
+  const host = window.location.hostname;
+  const isLocal = host === "localhost" || host === "127.0.0.1";
+  return isLocal ? "http://127.0.0.1:8001" : "/api";
 }
 
 function AppLayout({ token, setToken, toast, notify }) {

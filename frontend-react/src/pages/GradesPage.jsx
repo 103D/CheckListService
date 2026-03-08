@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FiPlus } from "react-icons/fi";
 import { apiRequest } from "../api/client";
 import DataTable from "../components/DataTable";
@@ -10,6 +10,18 @@ function getUserRole(token) {
   } catch {
     return null;
   }
+}
+
+function formatDateOnly(value) {
+  if (!value) return "-";
+  const text = String(value);
+  if (text.includes("T")) {
+    return text.split("T")[0];
+  }
+  if (text.includes(" ")) {
+    return text.split(" ")[0];
+  }
+  return text;
 }
 
 export default function GradesPage({ apiBaseUrl, token, notify }) {
@@ -27,6 +39,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
   const [branches, setBranches] = useState([]);
   const [rows, setRows] = useState([]);
   const [pendingGrades, setPendingGrades] = useState([]);
+  const [monthlyCountsByEmployee, setMonthlyCountsByEmployee] = useState({});
   const [error, setError] = useState("");
 
   const columns = [
@@ -60,19 +73,28 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
         token,
       });
       setEmployees(data);
-      if (data.length > 0) {
-        const firstId = Number(data[0].id);
-        setCreateForm((prev) => ({
-          ...prev,
-          employee_id: prev.employee_id || firstId,
-        }));
-        if (!createForm.employee_id) {
-          await loadByEmployee(firstId);
-        }
-      }
     } catch (err) {
       setError(err.message);
       notify("error", err.message);
+    }
+  };
+
+  const loadMonthlyCounts = async () => {
+    try {
+      const data = await apiRequest({
+        apiBaseUrl,
+        path: "/grades/monthly-counts",
+        token,
+      });
+
+      const nextMap = {};
+      for (const item of data) {
+        nextMap[item.employee_id] = Number(item.grades_count || 0);
+      }
+      setMonthlyCountsByEmployee(nextMap);
+    } catch (err) {
+      notify("error", err.message);
+      setMonthlyCountsByEmployee({});
     }
   };
 
@@ -118,6 +140,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
       });
       notify("success", "Оценка подтверждена");
       await loadPendingGrades();
+      await loadMonthlyCounts();
       if (createForm.employee_id) {
         await loadByEmployee(createForm.employee_id);
       }
@@ -136,6 +159,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
       });
       notify("success", "Оценка отклонена");
       await loadPendingGrades();
+      await loadMonthlyCounts();
       if (createForm.employee_id) {
         await loadByEmployee(createForm.employee_id);
       }
@@ -147,6 +171,13 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
   const handleCreate = async (event) => {
     event.preventDefault();
     setError("");
+
+    if (!createForm.employee_id) {
+      const message = "Сначала выберите сотрудника из списка";
+      setError(message);
+      notify("error", message);
+      return;
+    }
 
     try {
       await apiRequest({
@@ -162,6 +193,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
         },
       });
       setCreateForm((prev) => ({ ...prev, value: 100, comment: "" }));
+      await loadMonthlyCounts();
       await loadByEmployee(createForm.employee_id);
       await loadPendingGrades();
       notify("success", userRole === "ADMIN" ? "Оценка добавлена" : "Оценка отправлена на подтверждение");
@@ -175,7 +207,28 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     loadEmployees();
     loadBranches();
     loadPendingGrades();
+    loadMonthlyCounts();
   }, []);
+
+  const sortedEmployees = useMemo(() => {
+    const byName = (name) => String(name || "").toLocaleLowerCase("ru");
+    return [...employees].sort((left, right) => {
+      const leftCount = Number(monthlyCountsByEmployee[left.id] || 0);
+      const rightCount = Number(monthlyCountsByEmployee[right.id] || 0);
+      if (leftCount !== rightCount) {
+        return leftCount - rightCount;
+      }
+      return byName(left.name).localeCompare(byName(right.name));
+    });
+  }, [employees, monthlyCountsByEmployee]);
+
+  const underRatedEmployees = useMemo(
+    () =>
+      sortedEmployees.filter(
+        (employee) => (monthlyCountsByEmployee[employee.id] || 0) < 6,
+      ),
+    [sortedEmployees, monthlyCountsByEmployee],
+  );
 
   const statusLabel = (status) => {
     if (status === "APPROVED") return "✅ Подтверждена";
@@ -202,15 +255,19 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
       <form onSubmit={handleCreate} className="inline-form wrap">
         <select
           value={createForm.employee_id}
-          onChange={(e) =>
-            setCreateForm((prev) => ({ ...prev, employee_id: Number(e.target.value) }))
-          }
+          onChange={(e) => {
+            const id = Number(e.target.value);
+            setCreateForm((prev) => ({ ...prev, employee_id: id }));
+            loadByEmployee(id);
+          }}
           required
         >
-          {employees.length === 0 ? <option value="">Нет сотрудников</option> : null}
-          {employees.map((employee) => (
+          <option value="" disabled>
+            {employees.length === 0 ? "Нет сотрудников" : "Выберите сотрудника"}
+          </option>
+          {sortedEmployees.map((employee) => (
             <option key={employee.id} value={employee.id}>
-              {employee.name}
+              {employee.name} ({monthlyCountsByEmployee[employee.id] || 0}/6 за месяц)
             </option>
           ))}
         </select>
@@ -286,7 +343,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
                     <td>{grade.value}</td>
                     <td>{grade.role_in_shift}</td>
                     <td>{grade.comment || "—"}</td>
-                    <td>{grade.created_at}</td>
+                    <td>{formatDateOnly(grade.created_at)}</td>
                     {canModeratePending ? (
                       <td style={{ textAlign: "center" }}>
                         <input
@@ -329,9 +386,12 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
           }}
           style={{ marginBottom: "0.5rem" }}
         >
-          {employees.map((employee) => (
+          <option value="" disabled>
+            {employees.length === 0 ? "Нет сотрудников" : "Выберите сотрудника"}
+          </option>
+          {sortedEmployees.map((employee) => (
             <option key={employee.id} value={employee.id}>
-              {employee.name}
+              {employee.name} ({monthlyCountsByEmployee[employee.id] || 0}/6 за месяц)
             </option>
           ))}
         </select>
@@ -341,9 +401,37 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
             ...r,
             branch: getBranchLabel(r.employee_id),
             status: statusLabel(r.status),
+            created_at: formatDateOnly(r.created_at),
           }))}
           emptyText="Оценок пока нет"
         />
+      </div>
+
+      <div className="monthly-focus-block">
+        <h3>Нужно дооценить в этом месяце</h3>
+        {underRatedEmployees.length === 0 ? (
+          <p className="empty">Все сотрудники уже имеют 6+ оценок за месяц.</p>
+        ) : (
+          <div className="monthly-focus-list">
+            {underRatedEmployees.map((employee) => {
+              const count = Number(monthlyCountsByEmployee[employee.id] || 0);
+              return (
+                <button
+                  key={employee.id}
+                  type="button"
+                  className="monthly-focus-item"
+                  onClick={() => {
+                    setCreateForm((prev) => ({ ...prev, employee_id: employee.id }));
+                    loadByEmployee(employee.id);
+                  }}
+                >
+                  <span>{employee.name}</span>
+                  <strong>{count}/6</strong>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );

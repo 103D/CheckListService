@@ -42,7 +42,22 @@ def create_user_or_raise(user_data: UserCreate, db: Session) -> User:
             status_code=409, detail="User with this username already exists"
         )
 
+    is_first_user = db.query(User.id).first() is None
     branch = db.query(Branch).filter(Branch.id == user_data.branch_id).first()
+
+    # Bootstrap path for a clean database: allow creating the first ADMIN account
+    # and provision a default branch so the system can be used without demo seeding.
+    if is_first_user and branch is None and db.query(Branch.id).first() is None:
+        if user_data.role != "ADMIN":
+            raise HTTPException(
+                status_code=400,
+                detail="First user must have ADMIN role",
+            )
+
+        branch = Branch(name="Main Branch", city="Almaty")
+        db.add(branch)
+        db.flush()
+
     if not branch:
         raise HTTPException(status_code=400, detail="Branch not found")
 
@@ -50,7 +65,7 @@ def create_user_or_raise(user_data: UserCreate, db: Session) -> User:
         username=user_data.username,
         hashed_password=get_password_hash(user_data.password),
         role=user_data.role,
-        branch_id=user_data.branch_id,
+        branch_id=branch.id,
     )
     try:
         db.add(user)
@@ -85,5 +100,7 @@ def login(
     user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    token = create_access_token({"sub": user.username, "role": user.role, "branch_id": user.branch_id})
+    token = create_access_token(
+        {"sub": user.username, "role": user.role, "branch_id": user.branch_id}
+    )
     return {"access_token": token, "token_type": "bearer"}

@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
@@ -9,8 +11,17 @@ from app.routers import auth, branches, employees, grades, ratings
 from app.utils.employee_ids import next_employee_id_for_branch
 
 app = FastAPI()
-# Разрешаем все домены (для разработки)
-origins = ["*"]
+
+# CORS origins are configured from env for production safety.
+# Example: CORS_ORIGINS=https://your-domain.com,https://www.your-domain.com
+origins_env = os.getenv("CORS_ORIGINS", "")
+if origins_env.strip():
+    origins = [item.strip() for item in origins_env.split(",") if item.strip()]
+else:
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,7 +43,6 @@ def on_startup():
     ensure_branch_city_column()
     migrate_employee_ids_to_xxyy()
     reset_sequences()
-    seed_demo_employees_and_grades()
     print("DONE")
 
 
