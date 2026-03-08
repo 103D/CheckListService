@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { FiLogOut } from "react-icons/fi";
 import {
-    Navigate,
-    NavLink,
-    Outlet,
-    Route,
-    Routes,
-    useNavigate,
+  Navigate,
+  NavLink,
+  Outlet,
+  Route,
+  Routes,
+  useNavigate,
 } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AuthPage from "./pages/AuthPage";
@@ -17,10 +17,10 @@ import RatingsPage from "./pages/RatingsPage";
 import SecretRegisterPage from "./pages/SecretRegisterPage";
 
 function App() {
-  const defaultApiBaseUrl =
-    localStorage.getItem("apiBaseUrl") ||
-    import.meta.env.VITE_API_BASE_URL ||
-    inferApiBaseUrl();
+  const isLocalHost = isLocalBrowserHost();
+  const defaultApiBaseUrl = isLocalHost
+    ? localStorage.getItem("apiBaseUrl") || import.meta.env.VITE_API_BASE_URL || inferApiBaseUrl()
+    : import.meta.env.VITE_API_BASE_URL || inferApiBaseUrl();
 
   const [apiBaseUrl, setApiBaseUrl] = useState(
     defaultApiBaseUrl,
@@ -36,8 +36,10 @@ function App() {
   };
 
   useEffect(() => {
-    localStorage.setItem("apiBaseUrl", apiBaseUrl);
-  }, [apiBaseUrl]);
+    if (isLocalHost) {
+      localStorage.setItem("apiBaseUrl", apiBaseUrl);
+    }
+  }, [apiBaseUrl, isLocalHost]);
 
   useEffect(() => {
     if (token) {
@@ -105,6 +107,15 @@ function inferApiBaseUrl() {
   const host = window.location.hostname;
   const isLocal = host === "localhost" || host === "127.0.0.1";
   return isLocal ? "http://127.0.0.1:8001" : "/api";
+}
+
+function isLocalBrowserHost() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const host = window.location.hostname;
+  return host === "localhost" || host === "127.0.0.1";
 }
 
 function AppLayout({ token, setToken, toast, notify }) {
