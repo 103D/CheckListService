@@ -29,7 +29,7 @@ export default function SecretRegisterPage({ apiBaseUrl, notify }) {
       setError("Пароли не совпадают");
       return;
     }
-    if (!form.branch_id) {
+    if (branches.length > 0 && !form.branch_id) {
       setError("Выберите филиал");
       return;
     }
@@ -44,7 +44,7 @@ export default function SecretRegisterPage({ apiBaseUrl, notify }) {
           username: form.username,
           password: form.password,
           role: form.role,
-          branch_id: Number(form.branch_id),
+          branch_id: branches.length > 0 ? Number(form.branch_id) : 1,
         },
       });
       notify("success", "Аккаунт создан!");
@@ -98,20 +98,33 @@ export default function SecretRegisterPage({ apiBaseUrl, notify }) {
             <option value="MANAGER">Менеджер</option>
             <option value="ADMIN">Админ</option>
           </select>
-          <select
-            value={form.branch_id}
-            onChange={(e) => setForm((p) => ({ ...p, branch_id: e.target.value }))}
-            required
+          {branches.length > 0 ? (
+            <select
+              value={form.branch_id}
+              onChange={(e) => setForm((p) => ({ ...p, branch_id: e.target.value }))}
+              required
+            >
+              <option value="" disabled>Выберите филиал</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name} ({b.city})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="notice">
+              Филиалов пока нет. Для первого ADMIN будет автоматически создан филиал Main Branch (Almaty).
+            </div>
+          )}
+          <button type="submit" disabled={loading} className="auth-submit-btn">
+            {loading ? "Создаем..." : "Создать аккаунт"}
+          </button>
+          <button
+            type="button"
+            className="auth-secondary-btn"
+            onClick={() => navigate("/auth")}
           >
-            <option value="" disabled>Выберите филиал</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name} ({b.city})
-              </option>
-            ))}
-          </select>
-          <button type="submit" disabled={loading}>
-            {loading ? "Создание..." : "Создать аккаунт"}
+            Назад ко входу
           </button>
         </form>
       </div>

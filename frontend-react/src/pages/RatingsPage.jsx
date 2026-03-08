@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
+import { FiRefreshCw } from "react-icons/fi";
 import { apiRequest } from "../api/client";
 
 export default function RatingsPage({ apiBaseUrl, token, notify }) {
   const [rows, setRows] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [cityFilter, setCityFilter] = useState("ALL");
   const [branchFilter, setBranchFilter] = useState("ALL");
+  const [periodFilter, setPeriodFilter] = useState("ALL");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -13,10 +18,29 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
     setIsLoading(true);
 
     try {
+      const params = new URLSearchParams();
+      if (periodFilter !== "ALL") {
+        params.set("period", periodFilter.toLowerCase());
+      }
+      if (periodFilter === "CUSTOM") {
+        if (!dateFrom || !dateTo) {
+          setRows([]);
+          setError("Для произвольного диапазона выберите обе даты");
+          setIsLoading(false);
+          return;
+        }
+        params.set("date_from", dateFrom);
+        params.set("date_to", dateTo);
+      }
+
+      const ratingsPath = params.toString()
+        ? `/ratings/all?${params.toString()}`
+        : "/ratings/all";
+
       const [ratingsData, employeesData, branchesData] = await Promise.all([
         apiRequest({
           apiBaseUrl,
-          path: "/ratings/all",
+          path: ratingsPath,
           token,
         }),
         apiRequest({
@@ -69,7 +93,7 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
 
   useEffect(() => {
     loadRatings();
-  }, []);
+  }, [periodFilter, dateFrom, dateTo]);
 
   const cityOptions = useMemo(() => {
     return [
@@ -81,13 +105,21 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
   }, [rows]);
 
   const filteredRows = useMemo(() => {
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+
     return rows.filter((row) => {
       const cityMatches = cityFilter === "ALL" || row.city === cityFilter;
       const branchMatches =
         branchFilter === "ALL" || String(row.branch_id) === branchFilter;
-      return cityMatches && branchMatches;
+      const searchMatches =
+        normalizedSearch.length === 0 ||
+        row.employee_name?.toLowerCase().includes(normalizedSearch) ||
+        row.branch_name?.toLowerCase().includes(normalizedSearch) ||
+        row.city?.toLowerCase().includes(normalizedSearch);
+
+      return cityMatches && branchMatches && searchMatches;
     });
-  }, [rows, cityFilter, branchFilter]);
+  }, [rows, cityFilter, branchFilter, searchQuery]);
 
   const branchOptions = useMemo(() => {
     return [
@@ -115,6 +147,14 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
   const topFive = filteredRows.slice(0, 5);
   const remainingRows = filteredRows.slice(5);
 
+  const rankByEmployeeId = useMemo(() => {
+    const ranks = new Map();
+    rows.forEach((row, index) => {
+      ranks.set(row.employee_id, index + 1);
+    });
+    return ranks;
+  }, [rows]);
+
   useEffect(() => {
     if (
       branchFilter !== "ALL" &&
@@ -129,8 +169,14 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
       <div className="panel rating-main-panel">
         <div className="panel-head">
           <h2>Рейтинг сотрудников</h2>
-          <button type="button" onClick={loadRatings}>
-            Обновить
+          <button
+            type="button"
+            onClick={loadRatings}
+            className="icon-btn"
+            aria-label="Обновить"
+            title="Обновить"
+          >
+            <FiRefreshCw aria-hidden="true" />
           </button>
         </div>
 
@@ -145,7 +191,7 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
                 key={row.employee_id}
                 className={`podium-card podium-place-${index + 1}`}
               >
-                <p className="podium-rank">#{index + 1}</p>
+                <p className="podium-rank">#{rankByEmployeeId.get(row.employee_id) || "-"}</p>
                 <h3>{row.employee_name}</h3>
                 <p className="podium-meta">
                   {row.branch_name} · {row.city}
@@ -157,6 +203,15 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
         </div>
 
         <div className="rating-filters">
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Поиск: сотрудник, филиал, город"
+            aria-label="Поиск в рейтинге"
+            title="Поиск в рейтинге"
+          />
+
           <select
             value={cityFilter}
             onChange={(event) => {
@@ -184,6 +239,39 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
               </option>
             ))}
           </select>
+
+          <select
+            value={periodFilter}
+            onChange={(event) => setPeriodFilter(event.target.value)}
+            aria-label="Фильтр по периоду"
+            title="Фильтр по периоду"
+          >
+            <option value="WEEK">На этой неделе</option>
+            <option value="YESTERDAY">Вчера</option>
+            <option value="MONTH">В этом месяце</option>
+            <option value="YEAR">В этом году</option>
+            <option value="ALL">За все время</option>
+            <option value="CUSTOM">За промежуток времени</option>
+          </select>
+
+          {periodFilter === "CUSTOM" ? (
+            <>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(event) => setDateFrom(event.target.value)}
+                aria-label="Дата начала"
+                title="Дата начала"
+              />
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(event) => setDateTo(event.target.value)}
+                aria-label="Дата окончания"
+                title="Дата окончания"
+              />
+            </>
+          ) : null}
         </div>
 
         {isLoading ? <p className="empty">Загрузка...</p> : null}
@@ -210,7 +298,7 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
               ) : (
                 remainingRows.map((row, index) => (
                   <tr key={row.employee_id}>
-                    <td>{index + 6}</td>
+                    <td>{rankByEmployeeId.get(row.employee_id) || "-"}</td>
                     <td>{row.employee_name}</td>
                     <td>{row.city}</td>
                     <td>{row.branch_name}</td>

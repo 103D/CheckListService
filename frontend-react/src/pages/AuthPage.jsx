@@ -5,6 +5,7 @@ import { apiRequest } from "../api/client";
 export default function AuthPage({ apiBaseUrl, onLogin, notify }) {
   const navigate = useNavigate();
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const [loginForm, setLoginForm] = useState({
     username: "",
@@ -14,6 +15,7 @@ export default function AuthPage({ apiBaseUrl, onLogin, notify }) {
   const handleLogin = async (event) => {
     event.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
       const data = await apiRequest({
@@ -31,6 +33,8 @@ export default function AuthPage({ apiBaseUrl, onLogin, notify }) {
     } catch (err) {
       setError(err.message);
       notify("error", err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,7 +68,16 @@ export default function AuthPage({ apiBaseUrl, onLogin, notify }) {
             }
             required
           />
-          <button type="submit">Войти</button>
+          <button type="submit" className="auth-submit-btn" disabled={loading}>
+            {loading ? "Входим..." : "Войти"}
+          </button>
+          <button
+            type="button"
+            className="auth-secondary-btn"
+            onClick={() => navigate("/0x8f3a")}
+          >
+            Регистрация
+          </button>
         </form>
       </div>
     </div>

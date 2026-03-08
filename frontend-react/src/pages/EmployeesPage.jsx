@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FiPlus, FiRefreshCw, FiTrash2 } from "react-icons/fi";
 import { apiRequest } from "../api/client";
 
 function getUserRole(token) {
@@ -20,7 +21,12 @@ function getBranchIdFromToken(token) {
 }
 
 export default function EmployeesPage({ apiBaseUrl, token, notify }) {
-  const [form, setForm] = useState({ name: "", branch_id: "", hired_at: "" });
+  const [form, setForm] = useState({
+    name: "",
+    branch_id: "",
+    branch_name: "",
+    hired_at: "",
+  });
   const [branches, setBranches] = useState([]);
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
@@ -59,6 +65,7 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
           setForm((prev) => ({
             ...prev,
             branch_id: prev.branch_id || firstId,
+            branch_name: prev.branch_name || String(data[0].name || ""),
           }));
         }
       }
@@ -78,6 +85,18 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
     setError("");
 
     try {
+      let resolvedBranchId = Number(form.branch_id);
+      if (userRole === "ADMIN") {
+        const normalized = form.branch_name.trim().toLowerCase();
+        const matchedBranch = branches.find(
+          (branch) => String(branch.name).trim().toLowerCase() === normalized,
+        );
+        if (!matchedBranch) {
+          throw new Error("Филиал с таким названием не найден. Сначала создайте филиал.");
+        }
+        resolvedBranchId = Number(matchedBranch.id);
+      }
+
       await apiRequest({
         apiBaseUrl,
         path: "/employees/",
@@ -85,7 +104,7 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
         token,
         body: {
           name: form.name,
-          branch_id: Number(form.branch_id),
+          branch_id: resolvedBranchId,
           hired_at: form.hired_at || null,
         },
       });
@@ -127,8 +146,14 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
     <section className="panel">
       <div className="panel-head">
         <h2>Сотрудники</h2>
-        <button type="button" onClick={loadEmployees}>
-          Обновить
+        <button
+          type="button"
+          onClick={loadEmployees}
+          className="icon-btn"
+          aria-label="Обновить"
+          title="Обновить"
+        >
+          <FiRefreshCw aria-hidden="true" />
         </button>
       </div>
 
@@ -141,28 +166,33 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
           required
         />
         {userRole === "ADMIN" ? (
-          <select
-            value={form.branch_id}
-            onChange={(e) =>
-              setForm((prev) => ({ ...prev, branch_id: Number(e.target.value) }))
-            }
-            required
-          >
-            {branches.length === 0 ? <option value="">Нет филиалов</option> : null}
-            {branches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
+          <>
+            <input
+              type="text"
+              list="branch-options"
+              placeholder="Название филиала"
+              value={form.branch_name}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, branch_name: e.target.value }))
+              }
+              required
+            />
+            <datalist id="branch-options">
+              {branches.map((branch) => (
+                <option key={branch.id} value={branch.name} />
+              ))}
+            </datalist>
+          </>
         ) : null}
         <input
           type="date"
           value={form.hired_at}
           onChange={(e) => setForm((prev) => ({ ...prev, hired_at: e.target.value }))}
-          required
+            required
         />
-        <button type="submit">Создать</button>
+        <button type="submit" className="icon-btn" aria-label="Создать" title="Создать">
+          <FiPlus aria-hidden="true" />
+        </button>
       </form>
 
       {error ? <div className="notice error">{error}</div> : null}
@@ -189,8 +219,14 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
                   <td>{branchById.get(row.branch_id) || row.branch_id}</td>
                   <td>{row.hired_at || "—"}</td>
                   <td>
-                    <button type="button" onClick={() => handleDelete(row.id)}>
-                      Удалить
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(row.id)}
+                      className="icon-btn"
+                      aria-label="Удалить"
+                      title="Удалить"
+                    >
+                      <FiTrash2 aria-hidden="true" />
                     </button>
                   </td>
                 </tr>

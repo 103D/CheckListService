@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FiUserPlus } from "react-icons/fi";
 import { apiRequest } from "../api/client";
 
 export default function UsersPage({ apiBaseUrl, token, notify }) {
@@ -76,7 +77,9 @@ export default function UsersPage({ apiBaseUrl, token, notify }) {
           onChange={(e) => setForm((prev) => ({ ...prev, branch_id: e.target.value }))}
           required
         />
-        <button type="submit">Создать пользователя</button>
+        <button type="submit" className="icon-btn" aria-label="Создать пользователя" title="Создать пользователя">
+          <FiUserPlus aria-hidden="true" />
+        </button>
       </form>
 
       {error ? <div className="notice error">{error}</div> : null}

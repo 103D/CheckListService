@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
@@ -6,10 +8,20 @@ from sqlalchemy.orm import Session
 from app import models
 from app.database import engine
 from app.routers import auth, branches, employees, grades, ratings
+from app.utils.employee_ids import next_employee_id_for_branch
 
 app = FastAPI()
-# Разрешаем все домены (для разработки)
-origins = ["*"]
+
+# CORS origins are configured from env for production safety.
+# Example: CORS_ORIGINS=https://your-domain.com,https://www.your-domain.com
+origins_env = os.getenv("CORS_ORIGINS", "")
+if origins_env.strip():
+    origins = [item.strip() for item in origins_env.split(",") if item.strip()]
+else:
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,8 +41,8 @@ def on_startup():
     ensure_grade_status_column()
     ensure_employee_hired_at_column()
     ensure_branch_city_column()
+    migrate_employee_ids_to_xxyy()
     reset_sequences()
-    seed_demo_employees_and_grades()
     print("DONE")
 
 
@@ -103,9 +115,7 @@ def ensure_employee_hired_at_column() -> None:
 
     if "hired_at" not in columns:
         with engine.begin() as connection:
-            connection.execute(
-                text("ALTER TABLE employees ADD COLUMN hired_at DATE")
-            )
+            connection.execute(text("ALTER TABLE employees ADD COLUMN hired_at DATE"))
 
 
 def ensure_branch_city_column() -> None:
@@ -131,6 +141,91 @@ def ensure_branch_city_column() -> None:
                 "WHERE city IS NULL OR TRIM(city) = ''"
             )
         )
+
+
+def migrate_employee_ids_to_xxyy() -> None:
+    """Backfill legacy employee ids to xxyy and keep grades references consistent."""
+    with Session(engine) as db:
+        employees_by_branch = {}
+        for employee in (
+            db.query(models.Employee)
+            .order_by(models.Employee.branch_id, models.Employee.id)
+            .all()
+        ):
+            employees_by_branch.setdefault(employee.branch_id, []).append(employee)
+
+        mapping: dict[int, int] = {}
+        for branch_id, branch_employees in employees_by_branch.items():
+            if branch_id < 1 or branch_id > 99:
+                continue
+
+            if len(branch_employees) > 99:
+                continue
+
+            for index, employee in enumerate(branch_employees, start=1):
+                new_id = branch_id * 100 + index
+                if employee.id != new_id:
+                    mapping[employee.id] = new_id
+
+        if not mapping:
+            return
+
+        temp_ids = {}
+        for old_id in mapping:
+            temp_id = 1_000_000 + old_id
+            while (
+                db.query(models.Employee).filter(models.Employee.id == temp_id).first()
+                is not None
+            ):
+                temp_id += 1_000_000
+            temp_ids[old_id] = temp_id
+
+        # Stage 1: move rows to temporary ids and repoint grades.
+        for old_id, temp_id in temp_ids.items():
+            old_employee = (
+                db.query(models.Employee).filter(models.Employee.id == old_id).first()
+            )
+            if not old_employee:
+                continue
+
+            db.add(
+                models.Employee(
+                    id=temp_id,
+                    name=old_employee.name,
+                    branch_id=old_employee.branch_id,
+                    hired_at=old_employee.hired_at,
+                )
+            )
+            db.query(models.Grade).filter(models.Grade.employee_id == old_id).update(
+                {models.Grade.employee_id: temp_id}
+            )
+            db.delete(old_employee)
+
+        db.flush()
+
+        # Stage 2: move rows from temporary ids to final xxyy ids and repoint grades.
+        for old_id, new_id in mapping.items():
+            temp_id = temp_ids[old_id]
+            temp_employee = (
+                db.query(models.Employee).filter(models.Employee.id == temp_id).first()
+            )
+            if not temp_employee:
+                continue
+
+            db.add(
+                models.Employee(
+                    id=new_id,
+                    name=temp_employee.name,
+                    branch_id=temp_employee.branch_id,
+                    hired_at=temp_employee.hired_at,
+                )
+            )
+            db.query(models.Grade).filter(models.Grade.employee_id == temp_id).update(
+                {models.Grade.employee_id: new_id}
+            )
+            db.delete(temp_employee)
+
+        db.commit()
 
 
 def reset_sequences() -> None:
@@ -180,7 +275,15 @@ def seed_demo_employees_and_grades() -> None:
         created_employees = []
         for index, employee_name in enumerate(demo_employee_names):
             branch = branches[index % len(branches)]
-            employee = models.Employee(name=employee_name, branch_id=branch.id)
+            try:
+                employee_id = next_employee_id_for_branch(db, branch.id)
+            except ValueError:
+                # Skip branches that are out of xxyy range or fully occupied.
+                continue
+
+            employee = models.Employee(
+                id=employee_id, name=employee_name, branch_id=branch.id
+            )
             db.add(employee)
             created_employees.append(employee)
 
