@@ -16,10 +16,12 @@ import GradesPage from "./pages/GradesPage";
 import RatingsPage from "./pages/RatingsPage";
 import SecretRegisterPage from "./pages/SecretRegisterPage";
 
+const DEFAULT_RENDER_API_BASE_URL = "https://checklistservice.onrender.com";
+
 function App() {
   const isLocalHost = isLocalBrowserHost();
   const defaultApiBaseUrl = isLocalHost
-    ? localStorage.getItem("apiBaseUrl") || import.meta.env.VITE_API_BASE_URL || inferApiBaseUrl()
+    ? import.meta.env.VITE_API_BASE_URL || localStorage.getItem("apiBaseUrl") || inferApiBaseUrl()
     : import.meta.env.VITE_API_BASE_URL || inferApiBaseUrl();
 
   const [apiBaseUrl, setApiBaseUrl] = useState(
@@ -100,13 +102,7 @@ function App() {
 }
 
 function inferApiBaseUrl() {
-  if (typeof window === "undefined") {
-    return "/api";
-  }
-
-  const host = window.location.hostname;
-  const isLocal = host === "localhost" || host === "127.0.0.1";
-  return isLocal ? "http://127.0.0.1:8001" : "/api";
+  return DEFAULT_RENDER_API_BASE_URL;
 }
 
 function isLocalBrowserHost() {
