@@ -3,7 +3,10 @@
 Two working ways are documented below:
 
 - `Path A (recommended now)`: no Linux server, deploy with `Render + Vercel`.
+- `Path A2 (recommended alternative)`: no Linux server, deploy with `Railway + Vercel`.
 - `Path B`: your own Ubuntu/VPS with `nginx + systemd`.
+
+For Railway steps, see `deploy/DEPLOY_RAILWAY.md`.
 
 ## Path A: Launch Domain Now (Render + Vercel)
 
