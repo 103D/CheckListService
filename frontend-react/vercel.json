@@ -2,7 +2,23 @@
     "rewrites": [
         {
             "source": "/api/:path*",
-            "destination": "https://checklistservice.onrender.com/:path*"
+            "destination": "https://checklistservice-production.up.railway.app/:path*"
+        },
+        {
+            "source": "/docs",
+            "destination": "https://checklistservice-production.up.railway.app/docs"
+        },
+        {
+            "source": "/redoc",
+            "destination": "https://checklistservice-production.up.railway.app/redoc"
+        },
+        {
+            "source": "/openapi.json",
+            "destination": "https://checklistservice-production.up.railway.app/openapi.json"
+        },
+        {
+            "source": "/docs/oauth2-redirect",
+            "destination": "https://checklistservice-production.up.railway.app/docs/oauth2-redirect"
         },
         {
             "source": "/(.*)",
