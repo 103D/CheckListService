@@ -71,13 +71,6 @@ export default function AuthPage({ apiBaseUrl, onLogin, notify }) {
           <button type="submit" className="auth-submit-btn" disabled={loading}>
             {loading ? "Входим..." : "Войти"}
           </button>
-          <button
-            type="button"
-            className="auth-secondary-btn"
-            onClick={() => navigate("/0x8f3a")}
-          >
-            Регистрация
-          </button>
         </form>
       </div>
     </div>
