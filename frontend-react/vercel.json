@@ -1,6 +1,14 @@
 {
     "rewrites": [
         {
+            "source": "/api",
+            "destination": "https://checklistservice-production.up.railway.app/"
+        },
+        {
+            "source": "/api/:path*/",
+            "destination": "https://checklistservice-production.up.railway.app/:path*/"
+        },
+        {
             "source": "/api/:path*",
             "destination": "https://checklistservice-production.up.railway.app/:path*"
         },
