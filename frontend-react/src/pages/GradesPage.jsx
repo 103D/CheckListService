@@ -229,7 +229,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
   const underRatedEmployees = useMemo(
     () =>
       sortedEmployees.filter(
-        (employee) => (monthlyCountsByEmployee[employee.id] || 0) < 6,
+        (employee) => (monthlyCountsByEmployee[employee.id] || 0) < 3,
       ),
     [sortedEmployees, monthlyCountsByEmployee],
   );
@@ -271,7 +271,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
           </option>
           {sortedEmployees.map((employee) => (
             <option key={employee.id} value={employee.id}>
-              {employee.name} ({monthlyCountsByEmployee[employee.id] || 0}/6 за месяц)
+              {employee.name} ({monthlyCountsByEmployee[employee.id] || 0}/3 за месяц)
             </option>
           ))}
         </select>
@@ -395,7 +395,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
           </option>
           {sortedEmployees.map((employee) => (
             <option key={employee.id} value={employee.id}>
-              {employee.name} ({monthlyCountsByEmployee[employee.id] || 0}/6 за месяц)
+              {employee.name} ({monthlyCountsByEmployee[employee.id] || 0}/3 за месяц)
             </option>
           ))}
         </select>
@@ -430,7 +430,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
                   }}
                 >
                   <span>{employee.name}</span>
-                  <strong>{count}/6</strong>
+                  <strong>{count}/3</strong>
                 </button>
               );
             })}
