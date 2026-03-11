@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { FiRefreshCw } from "react-icons/fi";
+import * as XLSX from "xlsx";
 import { apiRequest } from "../api/client";
 
 function asArray(value) {
@@ -174,6 +175,29 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
 
   return (
     <section className="rating-page">
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "8px" }}>
+        <button
+          type="button"
+          onClick={() => {
+            if (filteredRows.length === 0) return;
+            const data = filteredRows.map((r, i) => ({
+              Место: rankByEmployeeId.get(r.employee_id) || i + 1,
+              Сотрудник: r.employee_name,
+              Город: r.city,
+              Филиал: r.branch_name,
+              "Средний балл": r.average_score.toFixed(2),
+              "Кол-во оценок": r.total_grades,
+            }));
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Рейтинг");
+            XLSX.writeFile(wb, "ratings.xlsx");
+          }}
+          style={{ backgroundColor: "#22c55e", color: "#fff", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer" }}
+        >
+          Экспорт в Excel
+        </button>
+      </div>
       <div className="panel rating-main-panel">
         <div className="panel-head">
           <h2>Рейтинг сотрудников</h2>

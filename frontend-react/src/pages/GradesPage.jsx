@@ -414,7 +414,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
       <div className="monthly-focus-block">
         <h3>Нужно дооценить в этом месяце</h3>
         {underRatedEmployees.length === 0 ? (
-          <p className="empty">Все сотрудники уже имеют 6+ оценок за месяц.</p>
+          <p className="empty">Все сотрудники уже имеют 3+ оценок за месяц.</p>
         ) : (
           <div className="monthly-focus-list">
             {underRatedEmployees.map((employee) => {

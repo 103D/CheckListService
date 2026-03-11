@@ -19,7 +19,7 @@ import SecretRegisterPage from "./pages/SecretRegisterPage";
 function App() {
   const isLocalHost = isLocalBrowserHost();
   const defaultApiBaseUrl = isLocalHost
-    ? import.meta.env.VITE_API_BASE_URL || localStorage.getItem("apiBaseUrl") || inferApiBaseUrl()
+    ? import.meta.env.VITE_API_BASE_URL || inferApiBaseUrl()
     : import.meta.env.VITE_API_BASE_URL || inferApiBaseUrl();
 
   const [apiBaseUrl, setApiBaseUrl] = useState(
@@ -106,7 +106,7 @@ function inferApiBaseUrl() {
 
   const host = window.location.hostname;
   const isLocal = host === "localhost" || host === "127.0.0.1";
-  return isLocal ? "http://127.0.0.1:8001" : "/api";
+  return isLocal ? "http://127.0.0.1:8000" : "/api";
 }
 
 function isLocalBrowserHost() {

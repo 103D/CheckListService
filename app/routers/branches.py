@@ -7,8 +7,10 @@ from sqlalchemy.orm import Session
 
 from app.core.security import ALGORITHM, SECRET_KEY
 from app.database import get_db
-from app.models import Branch, Employee, User
-from app.schemas import BranchCreate, BranchResponse, BranchUpdate
+from sqlalchemy import func
+
+from app.models import Branch, Employee, Grade, User
+from app.schemas import BranchCreate, BranchResponse, BranchUpdate, BranchWithRating
 
 router = APIRouter(prefix="/branches", tags=["Branches"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -43,9 +45,29 @@ def create_branch(
     return branch
 
 
-@router.get("/", response_model=List[BranchResponse])
+@router.get("/", response_model=List[BranchWithRating])
 def get_branches(db: Session = Depends(get_db)):
-    return db.query(Branch).all()
+    avg_score = func.coalesce(func.avg(Grade.value), 0.0)
+    emp_count = func.count(func.distinct(Employee.id))
+
+    rows = (
+        db.query(
+            Branch.id,
+            Branch.name,
+            Branch.city,
+            avg_score.label("average_score"),
+            emp_count.label("employee_count"),
+        )
+        .outerjoin(Employee, Employee.branch_id == Branch.id)
+        .outerjoin(
+            Grade,
+            (Grade.employee_id == Employee.id) & (Grade.status == "APPROVED"),
+        )
+        .group_by(Branch.id)
+        .order_by(Branch.id)
+        .all()
+    )
+    return rows
 
 
 @router.put("/{branch_id}", response_model=BranchResponse)

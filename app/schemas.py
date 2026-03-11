@@ -94,6 +94,17 @@ class BranchResponse(BaseModel):
         from_attributes = True
 
 
+class BranchWithRating(BaseModel):
+    id: int
+    name: str
+    city: str
+    average_score: float
+    employee_count: int
+
+    class Config:
+        from_attributes = True
+
+
 class BranchUpdate(BaseModel):
     name: str
     city: str = "Almaty"

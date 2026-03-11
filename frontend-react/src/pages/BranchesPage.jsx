@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { FiCheck, FiEdit2, FiPlus, FiRefreshCw, FiTrash2, FiX } from "react-icons/fi";
+import * as XLSX from "xlsx";
 import { apiRequest } from "../api/client";
 
 function asArray(value) {
@@ -120,21 +121,44 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
   };
 
   return (
-    <section className="panel">
-      <div className="panel-head">
-        <h2>Филиалы</h2>
+    <>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "8px" }}>
         <button
           type="button"
-          onClick={loadBranches}
-          className="icon-btn"
-          aria-label="Обновить"
-          title="Обновить"
+          onClick={() => {
+            if (rows.length === 0) return;
+            const data = rows.map((r) => ({
+              ID: r.id,
+              Название: r.name,
+              Город: r.city || "—",
+              Сотрудники: r.employee_count ?? 0,
+              "Средняя оценка": r.average_score != null ? Number(r.average_score).toFixed(1) : "—",
+            }));
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Филиалы");
+            XLSX.writeFile(wb, "branches.xlsx");
+          }}
+          style={{ backgroundColor: "#22c55e", color: "#fff", border: "none", padding: "8px 16px", borderRadius: "6px", cursor: "pointer"}}
         >
-          <FiRefreshCw aria-hidden="true" />
+          Экспорт в Excel
         </button>
       </div>
+      <section className="panel">
+        <div className="panel-head">
+          <h2>Филиалы</h2>
+          <button
+            type="button"
+            onClick={loadBranches}
+            className="icon-btn"
+            aria-label="Обновить"
+            title="Обновить"
+          >
+            <FiRefreshCw aria-hidden="true" />
+          </button>
+        </div>
 
-      {userRole === "ADMIN" && (
+        {userRole === "ADMIN" && (
         <form onSubmit={handleCreate} className="inline-form">
           <input
             type="text"
@@ -167,6 +191,8 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
                 <th>ID</th>
                 <th>Название</th>
                 <th>Город</th>
+                <th>Сотрудники</th>
+                <th>Средняя оценка</th>
                 {userRole === "ADMIN" ? <th>Действия</th> : null}
               </tr>
             </thead>
@@ -197,6 +223,12 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
                       ) : (
                         row.city || "—"
                       )}
+                    </td>
+                    <td>{row.employee_count ?? 0}</td>
+                    <td>
+                      {row.average_score != null
+                        ? Number(row.average_score).toFixed(1)
+                        : "—"}
                     </td>
                     {userRole === "ADMIN" ? (
                       <td>
@@ -253,5 +285,6 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
         </div>
       )}
     </section>
+    </>
   );
 }
