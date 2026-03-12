@@ -364,6 +364,35 @@ th {
   background: #f8fafc;
 }
 
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.sortable-th:hover {
+  background: #e8ecf1;
+}
+
+.sortable-th--active {
+  background: #eef2f7;
+}
+
+.sort-icon {
+  color: #c0c7d0;
+  font-size: 12px;
+  margin-left: 2px;
+  transition: color 0.15s;
+}
+
+.sortable-th:hover .sort-icon {
+  color: #8892a0;
+}
+
+.sort-icon--active {
+  color: var(--accent-deep);
+}
+
 .empty {
   margin: 0;
   color: #6b7280;

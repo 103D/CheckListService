@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FiCheck, FiEdit2, FiPlus, FiRefreshCw, FiTrash2, FiX } from "react-icons/fi";
 import * as XLSX from "xlsx";
 import { apiRequest } from "../api/client";
@@ -24,7 +24,35 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
   const [editName, setEditName] = useState("");
   const [editCity, setEditCity] = useState("Almaty");
   const [error, setError] = useState("");
+  const [sortKey, setSortKey] = useState("id");
+  const [sortDir, setSortDir] = useState("asc");
   const userRole = getUserRole(token);
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sortedRows = useMemo(() => {
+    return [...rows].sort((a, b) => {
+      let va = a[sortKey];
+      let vb = b[sortKey];
+      if (va == null) va = "";
+      if (vb == null) vb = "";
+      if (typeof va === "number" && typeof vb === "number") {
+        return sortDir === "asc" ? va - vb : vb - va;
+      }
+      const sa = String(va).toLowerCase();
+      const sb = String(vb).toLowerCase();
+      if (sa < sb) return sortDir === "asc" ? -1 : 1;
+      if (sa > sb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [rows, sortKey, sortDir]);
 
   const loadBranches = async () => {
     setError("");
@@ -188,16 +216,29 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
           <table>
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Название</th>
-                <th>Город</th>
-                <th>Сотрудники</th>
-                <th>Средняя оценка</th>
+                {[
+                  { key: "id", label: "ID" },
+                  { key: "name", label: "Название" },
+                  { key: "city", label: "Город" },
+                  { key: "employee_count", label: "Сотрудники" },
+                  { key: "average_score", label: "Средняя оценка" },
+                ].map((col) => (
+                  <th
+                    key={col.key}
+                    className={`sortable-th${sortKey === col.key ? " sortable-th--active" : ""}`}
+                    onClick={() => toggleSort(col.key)}
+                  >
+                    {col.label}
+                    <span className={sortKey === col.key ? "sort-icon sort-icon--active" : "sort-icon"}>
+                      {sortKey === col.key ? (sortDir === "asc" ? " ▲" : " ▼") : " ⇅"}
+                    </span>
+                  </th>
+                ))}
                 {userRole === "ADMIN" ? <th>Действия</th> : null}
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => {
+              {sortedRows.map((row) => {
                 const isEditing = editingBranchId === row.id;
                 return (
                   <tr key={row.id}>
