@@ -51,6 +51,24 @@ class GradeResponse(BaseModel):
         from_attributes = True
 
 
+class GradeWithDetails(BaseModel):
+    """Grade response with employee and manager details - optimized to reduce N+1 queries."""
+
+    id: int
+    value: int
+    role_in_shift: str
+    comment: Optional[str]
+    employee_id: int
+    employee_name: str
+    manager_id: int
+    manager_name: str
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class EmployeeMonthlyGradeCount(BaseModel):
     employee_id: int
     grades_count: int
@@ -105,6 +123,32 @@ class BranchUpdate(BaseModel):
         if not normalized:
             raise ValueError("Branch name cannot be empty")
         return normalized
+
+
+class BranchWithStats(BaseModel):
+    id: int
+    name: str
+    city: str
+    average_rating: Optional[float] = None
+    employees_count: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+class DailyRating(BaseModel):
+    date: str  # YYYY-MM-DD format
+    average_rating: Optional[float] = None
+    grades_count: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+class BranchRatingsHistory(BaseModel):
+    branch_id: int
+    branch_name: str
+    ratings: list[DailyRating]
 
 
 class UserCreate(BaseModel):

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { FiPlus } from "react-icons/fi";
+import { FiCheck, FiDownload, FiPlus, FiX } from "react-icons/fi";
+import * as XLSX from "xlsx";
 import { apiRequest } from "../api/client";
 import DataTable from "../components/DataTable";
 
@@ -45,6 +46,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
   const [pendingGrades, setPendingGrades] = useState([]);
   const [monthlyCountsByEmployee, setMonthlyCountsByEmployee] = useState({});
   const [error, setError] = useState("");
+  const [periodFilter, setPeriodFilter] = useState("month");
 
   const columns = [
     { key: "employee_id", label: "Сотрудник" },
@@ -102,22 +104,32 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     }
   };
 
-  const loadByEmployee = async (id) => {
+  const loadByEmployee = async (id, period = periodFilter) => {
     if (!id) {
       setRows([]);
       return;
     }
     setError("");
     try {
+      const params = new URLSearchParams();
+      if (period) params.append("period", period);
+      
       const data = await apiRequest({
         apiBaseUrl,
-        path: `/grades/employee/${Number(id)}`,
+        path: `/grades/employee/${Number(id)}?${params.toString()}`,
         token,
       });
       setRows(asArray(data));
     } catch (err) {
       setError(err.message);
       notify("error", err.message);
+    }
+  };
+
+  const handlePeriodChange = (employeeId, period) => {
+    setPeriodFilter(period);
+    if (employeeId) {
+      loadByEmployee(employeeId, period);
     }
   };
 
@@ -158,7 +170,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
       await apiRequest({
         apiBaseUrl,
         path: `/grades/${gradeId}/reject`,
-        method: "PATCH",
+        method: "DELETE",
         token,
       });
       notify("success", "Оценка отклонена");
@@ -170,6 +182,56 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     } catch (err) {
       notify("error", err.message);
     }
+  };
+
+  // Export to Excel with bold headers and borders
+  const handleExportExcel = () => {
+    const exportData = pendingGrades.map(row => ({
+      ID: row.id,
+      "Сотрудник": row.employee_name,
+      "Оценка": row.value,
+      "Роль": row.role_in_shift,
+      "Комментарий": row.comment || "",
+      "Статус": row.status,
+      "Дата": row.created_at ? new Date(row.created_at).toLocaleDateString("ru-RU") : ""
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Оценки");
+    
+    const colWidths = [
+      { wch: 5 },
+      { wch: 20 },
+      { wch: 8 },
+      { wch: 15 },
+      { wch: 30 },
+      { wch: 10 },
+      { wch: 12 },
+    ];
+    worksheet['!cols'] = colWidths;
+    
+    // Add bold headers and borders to all cells
+    const range = XLSX.utils.decode_range(worksheet['!ref']);
+    for (let R = range.s.r; R <= range.e.r; R++) {
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!worksheet[cellAddress]) continue;
+        
+        worksheet[cellAddress].s = {
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          },
+          font: R === 0 ? { bold: true } : {}
+        };
+      }
+    }
+    
+    XLSX.writeFile(workbook, "ocenki.xlsx");
+    notify("success", "Данные экспортированы в Excel");
   };
 
   const handleCreate = async (event) => {
@@ -254,6 +316,16 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     <section className="panel">
       <div className="panel-head">
         <h2>Оценки</h2>
+        {/* <button
+          type="button"
+          onClick={handleExportExcel}
+          className="icon-btn"
+          aria-label="Экспорт в Excel"
+          title="Экспорт в Excel"
+          disabled={pendingGrades.length === 0}
+        >
+          <FiDownload aria-hidden="true" />
+        </button> */}
       </div>
 
       <form onSubmit={handleCreate} className="inline-form wrap">
@@ -271,7 +343,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
           </option>
           {sortedEmployees.map((employee) => (
             <option key={employee.id} value={employee.id}>
-              {employee.name} ({monthlyCountsByEmployee[employee.id] || 0}/6 за месяц)
+              {employee.name} ({monthlyCountsByEmployee[employee.id] || 0}/3 за месяц)
             </option>
           ))}
         </select>
@@ -335,8 +407,8 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
                   <th>Роль</th>
                   <th>Комментарий</th>
                   <th>Дата</th>
-                  {canModeratePending ? <th title="Подтвердить">✅</th> : null}
-                  {canModeratePending ? <th title="Отклонить">🗑</th> : null}
+                  {canModeratePending ? <th title="Подтвердить"></th> : null}
+                  {canModeratePending ? <th title="Отклонить"></th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -350,24 +422,28 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
                     <td>{formatDateOnly(grade.created_at)}</td>
                     {canModeratePending ? (
                       <td style={{ textAlign: "center" }}>
-                        <input
-                          type="radio"
-                          name={`grade-${grade.id}`}
+                        <button
+                          type="button"
+                          className="icon-btn"
                           title="Подтвердить"
-                          onChange={() => handleApprove(grade.id)}
-                        />
+                          onClick={() => handleApprove(grade.id)}
+                          style={{ color: '#ffffff' }}
+                        >
+                          <FiCheck aria-hidden="true" />
+                        </button>
                       </td>
                     ) : null}
                     {canModeratePending ? (
                       <td style={{ textAlign: "center" }}>
-                        <span
-                          role="button"
+                        <button
+                          type="button"
+                          className="icon-btn"
                           title="Отклонить"
-                          style={{ cursor: "pointer", fontSize: "1.1rem" }}
                           onClick={() => handleReject(grade.id)}
+                          style={{ color: '#ffffff' }}
                         >
-                          🗑
-                        </span>
+                          <FiX aria-hidden="true" />
+                        </button>
                       </td>
                     ) : null}
                   </tr>
@@ -381,24 +457,37 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
 
       <div style={{ marginTop: "1rem" }}>
         <h3>История оценок</h3>
-        <select
-          value={createForm.employee_id}
-          onChange={(e) => {
-            const id = Number(e.target.value);
-            setCreateForm((prev) => ({ ...prev, employee_id: id }));
-            loadByEmployee(id);
-          }}
-          style={{ marginBottom: "0.5rem" }}
-        >
-          <option value="" disabled>
-            {employees.length === 0 ? "Нет сотрудников" : "Выберите сотрудника"}
-          </option>
-          {sortedEmployees.map((employee) => (
-            <option key={employee.id} value={employee.id}>
-              {employee.name} ({monthlyCountsByEmployee[employee.id] || 0}/6 за месяц)
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+          <select
+            value={createForm.employee_id}
+            onChange={(e) => {
+              const id = Number(e.target.value);
+              setCreateForm((prev) => ({ ...prev, employee_id: id }));
+              loadByEmployee(id, periodFilter);
+            }}
+            style={{ flex: '1', minWidth: '200px' }}
+          >
+            <option value="" disabled>
+              {employees.length === 0 ? "Нет сотрудников" : "Выберите сотрудника"}
             </option>
-          ))}
-        </select>
+            {sortedEmployees.map((employee) => (
+              <option key={employee.id} value={employee.id}>
+                {employee.name} ({monthlyCountsByEmployee[employee.id] || 0}/3 за месяц)
+              </option>
+            ))}
+          </select>
+          <select
+            value={periodFilter}
+            onChange={(e) => handlePeriodChange(createForm.employee_id, e.target.value)}
+            style={{ minWidth: '140px' }}
+          >
+            <option value="">За все время</option>
+            <option value="today">За сегодня</option>
+            <option value="week">За неделю</option>
+            <option value="month">За месяц</option>
+            <option value="year">За год</option>
+          </select>
+        </div>
         <DataTable
           columns={columns}
           rows={rows.map((r) => ({
@@ -430,7 +519,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
                   }}
                 >
                   <span>{employee.name}</span>
-                  <strong>{count}/6</strong>
+                  <strong>{count}/3</strong>
                 </button>
               );
             })}
@@ -440,3 +529,4 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     </section>
   );
 }
+

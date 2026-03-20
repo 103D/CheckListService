@@ -93,3 +93,4 @@ export default function UsersPage({ apiBaseUrl, token, notify }) {
     </section>
   );
 }
+

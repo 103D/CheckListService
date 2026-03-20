@@ -243,3 +243,4 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
     </section>
   );
 }
+

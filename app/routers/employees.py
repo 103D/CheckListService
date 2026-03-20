@@ -12,7 +12,7 @@ from app.schemas import EmployeeCreate, EmployeeResponse
 from app.utils.employee_ids import next_employee_id_for_branch
 
 router = APIRouter(prefix="/employees", tags=["Employees"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
 
 # Вспомогательная функция для получения пользователя из токена

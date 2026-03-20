@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { FiRefreshCw } from "react-icons/fi";
+import { FiDownload, FiRefreshCw } from "react-icons/fi";
+import * as XLSX from "xlsx";
 import { apiRequest } from "../api/client";
 
 function asArray(value) {
@@ -11,7 +12,7 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [cityFilter, setCityFilter] = useState("ALL");
   const [branchFilter, setBranchFilter] = useState("ALL");
-  const [periodFilter, setPeriodFilter] = useState("ALL");
+  const [periodFilter, setPeriodFilter] = useState("MONTH");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [error, setError] = useState("");
@@ -99,6 +100,54 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
     }
   };
 
+  // Export to Excel with bold headers and borders
+  const handleExportExcel = () => {
+    const exportData = filteredRows.map(row => ({
+      ID: row.employee_id,
+      "Сотрудник": row.employee_name,
+      "Филиал": row.branch_name,
+      "Город": row.city,
+      "Средний балл": row.average_score.toFixed(2),
+      "Кол-во оценок": row.total_grades
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Рейтинг");
+    
+    const colWidths = [
+      { wch: 5 },
+      { wch: 20 },
+      { wch: 20 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+    ];
+    worksheet['!cols'] = colWidths;
+    
+    // Add bold headers and borders to all cells
+    const range = XLSX.utils.decode_range(worksheet['!ref']);
+    for (let R = range.s.r; R <= range.e.r; R++) {
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+        if (!worksheet[cellAddress]) continue;
+        
+        worksheet[cellAddress].s = {
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          },
+          font: R === 0 ? { bold: true } : {}
+        };
+      }
+    }
+    
+    XLSX.writeFile(workbook, "reiting.xlsx");
+    notify("success", "Данные экспортированы в Excel");
+  };
+
   useEffect(() => {
     loadRatings();
   }, [periodFilter, dateFrom, dateTo]);
@@ -177,15 +226,27 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
       <div className="panel rating-main-panel">
         <div className="panel-head">
           <h2>Рейтинг сотрудников</h2>
-          <button
-            type="button"
-            onClick={loadRatings}
-            className="icon-btn"
-            aria-label="Обновить"
-            title="Обновить"
-          >
-            <FiRefreshCw aria-hidden="true" />
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              className="icon-btn"
+              aria-label="Экспорт в Excel"
+              title="Экспорт в Excel"
+              disabled={filteredRows.length === 0}
+            >
+              <FiDownload aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={loadRatings}
+              className="icon-btn"
+              aria-label="Обновить"
+              title="Обновить"
+            >
+              <FiRefreshCw aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         {error ? <div className="notice error">{error}</div> : null}
@@ -322,3 +383,4 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
     </section>
   );
 }
+

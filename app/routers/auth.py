@@ -16,7 +16,7 @@ from app.models import Branch, User
 from app.schemas import Token, UserCreate, UserResponse
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
 
 def get_current_user(

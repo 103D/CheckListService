@@ -85,3 +85,4 @@ function getRoleFromToken(token) {
     return null;
   }
 }
+

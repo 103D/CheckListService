@@ -324,8 +324,8 @@ def root():
     return {"message": "API running"}
 
 
-app.include_router(branches.router)
-app.include_router(auth.router)
-app.include_router(employees.router)
-app.include_router(grades.router)
-app.include_router(ratings.router)
+app.include_router(branches.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
+app.include_router(employees.router, prefix="/api")
+app.include_router(grades.router, prefix="/api")
+app.include_router(ratings.router, prefix="/api")

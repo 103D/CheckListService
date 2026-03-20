@@ -13,7 +13,7 @@ from app.models import Employee, Grade, User
 from app.schemas import EmployeeRating
 
 router = APIRouter(prefix="/ratings", tags=["Ratings"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
 
 def _parse_month_bounds(month: str | None) -> tuple[datetime, datetime] | None:
