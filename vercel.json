@@ -3,6 +3,11 @@
   "outputDirectory": "frontend-react/dist",
   "installCommand": "cd frontend-react && npm install",
   "framework": "vite",
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.11"
+    }
+  },
   "routes": [
     {
       "src": "/api/(.*)",
