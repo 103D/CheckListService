@@ -4,10 +4,6 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/index.py"
-    },
-    {
       "source": "/((?!api).*)",
       "destination": "/frontend-react/dist/index.html"
     }
