@@ -2,17 +2,14 @@
   "buildCommand": "cd frontend-react && npm install && npm run build",
   "outputDirectory": "frontend-react/dist",
   "framework": "vite",
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/index.py"
+      "source": "/api/:path*",
+      "destination": "/api/index.py"
     },
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend-react/dist/$1"
+      "source": "/((?!api).*)",
+      "destination": "/frontend-react/dist/index.html"
     }
   ]
 }
