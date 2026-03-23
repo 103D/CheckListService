@@ -162,17 +162,23 @@ def create_grade(
             status_code=403, detail="Cannot grade employee from another branch"
         )
 
-    # Validation: Check if employee already has 3 or more approved grades
+    # Validation: Check if employee already has 3 or more approved grades in the current month
+    month_start, next_month_start = _current_month_bounds()
     approved_grades_count = (
         db.query(func.count(Grade.id))
-        .filter(Grade.employee_id == grade_data.employee_id, Grade.status == "APPROVED")
+        .filter(
+            Grade.employee_id == grade_data.employee_id,
+            Grade.status == "APPROVED",
+            Grade.created_at >= month_start,
+            Grade.created_at < next_month_start,
+        )
         .scalar()
     )
 
     if approved_grades_count >= 3:
         raise HTTPException(
             status_code=400,
-            detail="Сотрудник уже имеет 3 или более подтвержденных оценок. Нельзя добавить новую оценку.",
+            detail="Сотрудник уже имеет 3 или более подтвержденных оценок в этом месяце. Нельзя добавить новую оценку.",
         )
 
     grade = Grade(
