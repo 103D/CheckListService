@@ -35,9 +35,30 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-def get_date_filter(period: Optional[str]) -> tuple[datetime, datetime]:
-    """Calculate date range based on period filter."""
+def get_date_filter(period: Optional[str], date_from: Optional[str] = None, date_to: Optional[str] = None) -> tuple[datetime, datetime]:
+    """Calculate date range based on period filter or custom date range."""
     now = datetime.utcnow()
+
+    # If custom date range is provided, use it
+    if date_from or date_to:
+        if date_from:
+            try:
+                start = datetime.strptime(date_from, "%Y-%m-%d")
+            except ValueError:
+                start = datetime(1970, 1, 1)
+        else:
+            start = datetime(1970, 1, 1)
+        
+        if date_to:
+            try:
+                end = datetime.strptime(date_to, "%Y-%m-%d")
+                end = end.replace(hour=23, minute=59, second=59, microsecond=999999)
+            except ValueError:
+                end = now
+        else:
+            end = now
+        
+        return start, end
 
     if period == "today":
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -92,13 +113,15 @@ def get_branches(
     period: Optional[str] = Query(
         None, description="Period for rating: today, week, month, year"
     ),
+    date_from: Optional[str] = Query(None, description="Start date for custom range (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="End date for custom range (YYYY-MM-DD)"),
     sort_by: Optional[str] = Query(
         "id", description="Sort by: id, name, city, average_rating, employees_count"
     ),
     sort_order: Optional[str] = Query("asc", description="Sort order: asc, desc"),
 ):
-    # Get date range for period filter
-    date_start, date_end = get_date_filter(period)
+    # Get date range for period filter or custom date range
+    date_start, date_end = get_date_filter(period, date_from, date_to)
 
     # Subquery for average rating per branch (filtered by period and status)
     avg_rating_subquery = (

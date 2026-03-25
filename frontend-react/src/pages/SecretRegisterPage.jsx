@@ -6,7 +6,7 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
-export default function SecretRegisterPage({ apiBaseUrl, notify }) {
+export default function SecretRegisterPage({ API, apiBaseUrl, notify }) {
   const navigate = useNavigate();
   const [branches, setBranches] = useState([]);
   const [form, setForm] = useState({
@@ -20,10 +20,10 @@ export default function SecretRegisterPage({ apiBaseUrl, notify }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    apiRequest({ apiBaseUrl, path: "/branches/" })
+    apiRequest({ apiBaseUrl, path: `${API}/branches/` })
       .then((data) => setBranches(asArray(data)))
       .catch(() => {});
-  }, [apiBaseUrl]);
+  }, [apiBaseUrl, API]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,7 +42,7 @@ export default function SecretRegisterPage({ apiBaseUrl, notify }) {
     try {
       await apiRequest({
         apiBaseUrl,
-        path: "/auth/register",
+        path: `${API}/auth/register`,
         method: "POST",
         body: {
           username: form.username,

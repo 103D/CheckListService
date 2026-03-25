@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../api/client";
 
-export default function AuthPage({ apiBaseUrl, onLogin, notify }) {
+export default function AuthPage({ API, apiBaseUrl, onLogin, notify }) {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,7 +20,7 @@ export default function AuthPage({ apiBaseUrl, onLogin, notify }) {
     try {
       const data = await apiRequest({
         apiBaseUrl,
-        path: "/auth/login",
+        path: API+"/auth/login",
         method: "POST",
         isForm: true,
         body: loginForm,
@@ -29,7 +29,7 @@ export default function AuthPage({ apiBaseUrl, onLogin, notify }) {
       onLogin(data.access_token);
       notify("success", "Вход выполнен");
       const role = getRoleFromToken(data.access_token);
-      navigate(role === "ADMIN" ? "/ratings" : "/branches");
+      navigate(role === "ADMIN" ? `${API}/ratings` : `${API}/branches`);
     } catch (err) {
       setError(err.message);
       notify("error", err.message);

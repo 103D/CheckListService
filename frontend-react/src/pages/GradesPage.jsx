@@ -29,7 +29,7 @@ function formatDateOnly(value) {
   return text;
 }
 
-export default function GradesPage({ apiBaseUrl, token, notify }) {
+export default function GradesPage({ API, apiBaseUrl, token, notify }) {
   const shiftRoles = ["Кассир", "Продавец", "Официант", "Бариста"];
   const userRole = getUserRole(token);
   const canModeratePending = userRole === "ADMIN";
@@ -47,6 +47,8 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
   const [monthlyCountsByEmployee, setMonthlyCountsByEmployee] = useState({});
   const [error, setError] = useState("");
   const [periodFilter, setPeriodFilter] = useState("month");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const columns = [
     { key: "employee_id", label: "Сотрудник" },
@@ -62,7 +64,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     try {
       const data = await apiRequest({
         apiBaseUrl,
-        path: "/branches/",
+        path: `${API}/branches/`,
       });
       setBranches(asArray(data));
     } catch {
@@ -75,7 +77,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     try {
       const data = await apiRequest({
         apiBaseUrl,
-        path: "/employees/",
+        path: `${API}/employees/`,
         token,
       });
       setEmployees(asArray(data));
@@ -89,7 +91,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     try {
       const data = await apiRequest({
         apiBaseUrl,
-        path: "/grades/monthly-counts",
+        path: `${API}/grades/monthly-counts`,
         token,
       });
 
@@ -112,11 +114,20 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     setError("");
     try {
       const params = new URLSearchParams();
-      if (period) params.append("period", period);
-      
+      if (period === "custom") {
+        if (!dateFrom || !dateTo) {
+          setRows([]);
+          return;
+        }
+        params.append("date_from", dateFrom);
+        params.append("date_to", dateTo);
+      } else if (period) {
+        params.append("period", period);
+      }
+       
       const data = await apiRequest({
         apiBaseUrl,
-        path: `/grades/employee/${Number(id)}?${params.toString()}`,
+        path: `${API}/grades/employee/${Number(id)}?${params.toString()}`,
         token,
       });
       setRows(asArray(data));
@@ -128,8 +139,16 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
 
   const handlePeriodChange = (employeeId, period) => {
     setPeriodFilter(period);
-    if (employeeId) {
-      loadByEmployee(employeeId, period);
+    if (period !== "custom") {
+      if (employeeId) {
+        loadByEmployee(employeeId, period);
+      }
+    }
+  };
+
+  const handleDateChange = () => {
+    if (createForm.employee_id && dateFrom && dateTo) {
+      loadByEmployee(createForm.employee_id, "custom");
     }
   };
 
@@ -137,7 +156,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     try {
       const data = await apiRequest({
         apiBaseUrl,
-        path: "/grades/pending",
+        path: `${API}/grades/pending`,
         token,
       });
       setPendingGrades(asArray(data));
@@ -150,7 +169,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     try {
       await apiRequest({
         apiBaseUrl,
-        path: `/grades/${gradeId}/approve`,
+        path: `${API}/grades/${gradeId}/approve`,
         method: "PATCH",
         token,
       });
@@ -169,7 +188,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     try {
       await apiRequest({
         apiBaseUrl,
-        path: `/grades/${gradeId}/reject`,
+        path: `${API}/grades/${gradeId}/reject`,
         method: "DELETE",
         token,
       });
@@ -248,7 +267,7 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
     try {
       await apiRequest({
         apiBaseUrl,
-        path: "/grades/",
+        path: `${API}/grades/`,
         method: "POST",
         token,
         body: {
@@ -481,12 +500,37 @@ export default function GradesPage({ apiBaseUrl, token, notify }) {
             onChange={(e) => handlePeriodChange(createForm.employee_id, e.target.value)}
             style={{ minWidth: '140px' }}
           >
-            <option value="">За все время</option>
+            <option value="month">За месяц</option>
             <option value="today">За сегодня</option>
             <option value="week">За неделю</option>
-            <option value="month">За месяц</option>
             <option value="year">За год</option>
+            <option value="">За все время</option>
+            <option value="custom">За промежуток времени</option>
           </select>
+          {periodFilter === "custom" ? (
+            <>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                }}
+                onBlur={handleDateChange}
+                aria-label="Дата начала"
+                title="Дата начала"
+              />
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                }}
+                onBlur={handleDateChange}
+                aria-label="Дата окончания"
+                title="Дата окончания"
+              />
+            </>
+          ) : null}
         </div>
         <DataTable
           columns={columns}

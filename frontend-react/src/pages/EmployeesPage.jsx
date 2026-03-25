@@ -24,7 +24,7 @@ function getBranchIdFromToken(token) {
   }
 }
 
-export default function EmployeesPage({ apiBaseUrl, token, notify }) {
+export default function EmployeesPage({API, apiBaseUrl, token, notify }) {
   const [form, setForm] = useState({
     name: "",
     branch_id: "",
@@ -42,7 +42,7 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
     try {
       const data = await apiRequest({
         apiBaseUrl,
-        path: "/employees/",
+        path: `${API}/employees/`,
         token,
       });
       setRows(asArray(data));
@@ -57,7 +57,7 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
     try {
       const data = await apiRequest({
         apiBaseUrl,
-        path: "/branches/",
+        path: `${API}/branches/`,
         token,
       });
       const branchList = asArray(data);
@@ -104,7 +104,7 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
 
       await apiRequest({
         apiBaseUrl,
-        path: "/employees/",
+        path: `${API}/employees/`,
         method: "POST",
         token,
         body: {
@@ -126,7 +126,7 @@ export default function EmployeesPage({ apiBaseUrl, token, notify }) {
     try {
       await apiRequest({
         apiBaseUrl,
-        path: `/employees/${employeeId}`,
+        path: `${API}/employees/${employeeId}`,
         method: "DELETE",
         token,
       });

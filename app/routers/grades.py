@@ -215,6 +215,12 @@ def get_grades_for_employee(
     period: Optional[str] = Query(
         None, description="Filter by period: today, week, month, year"
     ),
+    date_from: Optional[str] = Query(
+        None, description="Filter from date (YYYY-MM-DD)"
+    ),
+    date_to: Optional[str] = Query(
+        None, description="Filter to date (YYYY-MM-DD)"
+    ),
 ):
     employee = db.query(Employee).filter(Employee.id == employee_id).first()
     if not employee:
@@ -231,6 +237,23 @@ def get_grades_for_employee(
         start, end = _get_period_bounds(period)
         if start and end:
             query = query.filter(Grade.created_at >= start, Grade.created_at < end)
+
+    # Apply custom date range filter if provided
+    if date_from:
+        try:
+            from_date = datetime.strptime(date_from, "%Y-%m-%d")
+            query = query.filter(Grade.created_at >= from_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date_from format. Use YYYY-MM-DD")
+
+    if date_to:
+        try:
+            to_date = datetime.strptime(date_to, "%Y-%m-%d")
+            # Include the entire day
+            to_date = to_date + timedelta(days=1)
+            query = query.filter(Grade.created_at < to_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date_to format. Use YYYY-MM-DD")
 
     return query.order_by(Grade.created_at.desc()).all()
 

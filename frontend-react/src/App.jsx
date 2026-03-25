@@ -17,6 +17,7 @@ import RatingsPage from "./pages/RatingsPage";
 import SecretRegisterPage from "./pages/SecretRegisterPage";
 
 function App() {
+  const API = "/api";
   const isLocalHost = isLocalBrowserHost();
   const defaultApiBaseUrl = isLocalHost
     ? import.meta.env.VITE_API_BASE_URL || localStorage.getItem("apiBaseUrl") || inferApiBaseUrl()
@@ -55,17 +56,18 @@ function App() {
     <Routes>
       <Route
         path="/auth"
-        element={<AuthPage apiBaseUrl={apiBaseUrl} onLogin={setToken} notify={notify} />}
+        element={<AuthPage API={API} apiBaseUrl={apiBaseUrl} onLogin={setToken} notify={notify} />}
       />
       <Route
         path="/0x8f3a"
-        element={<SecretRegisterPage apiBaseUrl={apiBaseUrl} notify={notify} />}
+        element={<SecretRegisterPage API={API} apiBaseUrl={apiBaseUrl} notify={notify} />}
       />
 
       <Route
         element={
           <ProtectedRoute token={token}>
             <AppLayout
+              API={API}
               apiBaseUrl={apiBaseUrl}
               token={token}
               setToken={setToken}
@@ -78,19 +80,19 @@ function App() {
         <Route path="/" element={<Navigate to="/branches" replace />} />
         <Route
           path="/branches"
-          element={<BranchesPage apiBaseUrl={apiBaseUrl} token={token} notify={notify} />}
+          element={<BranchesPage API={API} apiBaseUrl={apiBaseUrl} token={token} notify={notify} />}
         />
         <Route
           path="/employees"
-          element={<EmployeesPage apiBaseUrl={apiBaseUrl} token={token} notify={notify} />}
+          element={<EmployeesPage API={API} apiBaseUrl={apiBaseUrl} token={token} notify={notify} />}
         />
         <Route
           path="/grades"
-          element={<GradesPage apiBaseUrl={apiBaseUrl} token={token} notify={notify} />}
+          element={<GradesPage API={API} apiBaseUrl={apiBaseUrl} token={token} notify={notify} />}
         />
         <Route
           path="/ratings"
-          element={<RatingsPage apiBaseUrl={apiBaseUrl} token={token} notify={notify} />}
+          element={<RatingsPage API={API} apiBaseUrl={apiBaseUrl} token={token} notify={notify} />}
         />
       </Route>
 

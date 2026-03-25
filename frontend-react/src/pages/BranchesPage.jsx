@@ -16,7 +16,7 @@ function getUserRole(token) {
   }
 }
 
-export default function BranchesPage({ apiBaseUrl, token, notify }) {
+export default function BranchesPage({ API, apiBaseUrl, token, notify }) {
   const [name, setName] = useState("");
   const [city, setCity] = useState("Almaty");
   const [allRows, setAllRows] = useState([]);
@@ -29,6 +29,8 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
   const [search, setSearch] = useState("");
   const [cityFilter, setCityFilter] = useState("");
   const [periodFilter, setPeriodFilter] = useState("month");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: "id", order: "asc" });
   const [cities, setCities] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,12 +45,23 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
       const params = new URLSearchParams();
       if (search) params.append("search", search);
       if (cityFilter) params.append("city", cityFilter);
-      if (periodFilter) params.append("period", periodFilter);
+      
+      if (periodFilter === "custom") {
+        if (!dateFrom || !dateTo) {
+          setAllRows([]);
+          setIsLoading(false);
+          return;
+        }
+        params.append("date_from", dateFrom);
+        params.append("date_to", dateTo);
+      } else if (periodFilter) {
+        params.append("period", periodFilter);
+      }
 
       
       const data = await apiRequest({
         apiBaseUrl,
-        path: `/branches/?${params.toString()}`,
+        path: `${API}/branches/?${params.toString()}`,
         token,
       });
       setAllRows(asArray(data));
@@ -65,7 +78,7 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
     try {
       const data = await apiRequest({
         apiBaseUrl,
-        path: "/branches/cities",
+        path: `${API}/branches/cities`,
         token,
       });
       setCities(asArray(data));
@@ -82,7 +95,7 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
   // Reload when filters change (but not when sorting)
   useEffect(() => {
     loadBranches();
-  }, [search, cityFilter, periodFilter]);
+  }, [search, cityFilter, periodFilter, dateFrom, dateTo]);
 
   // Frontend sorting - instant, no reload
   const sortedRows = useMemo(() => {
@@ -200,7 +213,7 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
     try {
       await apiRequest({
         apiBaseUrl,
-        path: "/branches/",
+        path: API+"/branches/",
         method: "POST",
         token,
         body: { name, city },
@@ -232,7 +245,7 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
     try {
       await apiRequest({
         apiBaseUrl,
-        path: `/branches/${branchId}`,
+        path: `${API}/branches/${branchId}`,
         method: "PUT",
         token,
         body: { name: editName, city: editCity },
@@ -258,7 +271,7 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
     try {
       await apiRequest({
         apiBaseUrl,
-        path: `/branches/${branch.id}`,
+        path: `${API}/branches/${branch.id}`,
         method: "DELETE",
         token,
       });
@@ -330,12 +343,32 @@ export default function BranchesPage({ apiBaseUrl, token, notify }) {
           onChange={(e) => setPeriodFilter(e.target.value)}
           style={{ minWidth: '140px', padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd', backgroundColor: '#fff' }}
         >
-          <option value="">За все время</option>
+          <option value="month">За месяц</option>
           <option value="today">За сегодня</option>
           <option value="week">За неделю</option>
-          <option value="month">За месяц</option>
           <option value="year">За год</option>
+          <option value="">За все время</option>
+          <option value="custom">За промежуток времени</option>
         </select>
+
+        {periodFilter === "custom" ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '12px', color: '#666' }}>С:</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd', backgroundColor: '#fff', minWidth: '130px' }}
+            />
+            <span style={{ fontSize: '12px', color: '#666' }}>По:</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd', backgroundColor: '#fff', minWidth: '130px' }}
+            />
+          </div>
+        ) : null}
       </div>
 
       {/* Create form for admin */}

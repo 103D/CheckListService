@@ -7,7 +7,7 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
-export default function RatingsPage({ apiBaseUrl, token, notify }) {
+export default function RatingsPage({ API, apiBaseUrl, token, notify }) {
   const [rows, setRows] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [cityFilter, setCityFilter] = useState("ALL");
@@ -39,8 +39,8 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
       }
 
       const ratingsPath = params.toString()
-        ? `/ratings/all?${params.toString()}`
-        : "/ratings/all";
+        ? `${API}/ratings/all?${params.toString()}`
+        : `${API}/ratings/all`;
 
       const [ratingsRaw, employeesRaw, branchesRaw] = await Promise.all([
         apiRequest({
@@ -50,12 +50,12 @@ export default function RatingsPage({ apiBaseUrl, token, notify }) {
         }),
         apiRequest({
           apiBaseUrl,
-          path: "/employees/",
+          path: API+"/employees/",
           token,
         }),
         apiRequest({
           apiBaseUrl,
-          path: "/branches/",
+          path: API+"/branches/",
           token,
         }),
       ]);

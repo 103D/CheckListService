@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FiUserPlus } from "react-icons/fi";
 import { apiRequest } from "../api/client";
 
-export default function UsersPage({ apiBaseUrl, token, notify }) {
+export default function UsersPage({ API, apiBaseUrl, token, notify }) {
   const [form, setForm] = useState({
     username: "",
     password: "",
@@ -20,7 +20,7 @@ export default function UsersPage({ apiBaseUrl, token, notify }) {
     try {
       const data = await apiRequest({
         apiBaseUrl,
-        path: "/auth/users",
+        path: API+"/auth/users",
         method: "POST",
         token,
         body: {
